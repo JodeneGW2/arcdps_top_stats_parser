@@ -32,7 +32,9 @@ import jsons
 import math
 import requests
 import datetime
-import Guild_Data
+import importlib
+# Import guild data if it exists
+Guild_Data = importlib.find_loader('Guild_Data')
 
 debug = False # enable / disable debug output
 
@@ -153,13 +155,20 @@ On_Tag = 600
 Run_Back = 5000
 Death_OnTag = {}
 
+#Calculate SethBot Variables
+SethBot = {}
+
 #fetch Guild Data and Check Guild Status function
-Guild_ID = Guild_Data.Guild_ID
-API_Key = Guild_Data.API_Key
-api_url = "https://api.guildwars2.com/v2/guild/"+Guild_ID+"/members?access_token="+API_Key
-response = requests.get(api_url)
-members = json.loads(response.text)
-print("response code: "+str(response.status_code))
+if Guild_Data:
+	Guild_ID = Guild_Data.Guild_ID
+	API_Key = Guild_Data.API_Key
+	api_url = "https://api.guildwars2.com/v2/guild/"+Guild_ID+"/members?access_token="+API_Key
+	response = requests.get(api_url)
+	members = json.loads(response.text)
+	print("response code: "+str(response.status_code))
+else:
+	# Handle no guild data, support player page wont work
+	members = []
 
 
 def findMember(json_object, name):
@@ -760,6 +769,55 @@ def write_Death_OnTag_xls(Death_OnTag, uptime_Table, players, xls_output_filenam
 		i=i+1
 	wb.save(xls_output_filename)
 
+def write_SethBoth_xls(SethBot, uptime_Table, players, xls_output_filename):
+	fileDate = datetime.datetime.now()
+	book = xlrd.open_workbook(xls_output_filename)
+	wb = copy(book)
+	sheet1 = wb.add_sheet("SethBot")
+	
+	sheet1.write(0, 0, "Date")
+	sheet1.write(0, 1, "Name")
+	sheet1.write(0, 2, "Profession")
+	sheet1.write(0, 3, "Attendance")
+	sheet1.write(0, 4, "Damage_Total")
+	sheet1.write(0, 5, "Squad_Damage_Total")
+	sheet1.write(0, 6, "Downs/min")
+	sheet1.write(0, 7, "Kills/min")
+	sheet1.write(0, 8, "CDPS")
+	sheet1.write(0, 9, "Chunk_Damage")
+	sheet1.write(0, 10, "Chunk_Damage_Total")
+	sheet1.write(0, 11, "Chunk_Damage_7")
+	sheet1.write(0, 12, "Chunk_Damage_Total_7")
+	sheet1.write(0, 13, "Carrion_Damage")
+	sheet1.write(0, 14, "Carrion_Damage_Total")
+		
+	i = 0
+
+	for name in SethBot:
+		prof = "Not Found"
+		fightTime = uptime_Table[name]['duration']
+		for nameIndex in players:
+			if nameIndex.name == name:
+				prof = nameIndex.profession	
+
+		sheet1.write(i+1, 0, fileDate.strftime("%Y-%m-%d"))
+		sheet1.write(i+1, 1, name)
+		sheet1.write(i+1, 2, prof)
+		sheet1.write(i+1, 3, fightTime)
+		sheet1.write(i+1, 4, SethBot[name]['Damage_Total'])
+		sheet1.write(i+1, 5, SethBot[name]['Squad_Damage_Total'])
+		sheet1.write(i+1, 6, SethBot[name]['Downs'] / (fightTime / 60))
+		sheet1.write(i+1, 7, SethBot[name]['Kills'] / (fightTime / 60))
+		sheet1.write(i+1, 8, SethBot[name]['Seth_Score'] / fightTime)
+		sheet1.write(i+1, 9, SethBot[name]['Chunk_Damage'])
+		sheet1.write(i+1, 10, SethBot[name]['Chunk_Damage_Total'])
+		sheet1.write(i+1, 11, SethBot[name]['Chunk_Damage_7'])
+		sheet1.write(i+1, 12, SethBot[name]['Chunk_Damage_Total_7'])
+		sheet1.write(i+1, 13, SethBot[name]['Carrion_Damage'])
+		sheet1.write(i+1, 14, SethBot[name]['Carrion_Damage_Total'])
+		i=i+1
+	wb.save(xls_output_filename)
+
 def write_squad_offensive_xls(squad_offensive, xls_output_filename):
 	fileDate = datetime.datetime.now()
 	book = xlrd.open_workbook(xls_output_filename)
@@ -1262,7 +1320,7 @@ def collect_stat_data(args, config, log, anonymize=False):
 		json_datafile = open(file_path, encoding='utf-8')
 		json_data = json.load(json_datafile)
 		# get fight stats
-		fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag = get_stats_from_fight_json(json_data, config, log)
+		fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, SethBot = get_stats_from_fight_json(json_data, config, log)
 			
 		if first:
 			first = False
@@ -1439,7 +1497,7 @@ def collect_stat_data(args, config, log, anonymize=False):
 	if anonymize:
 		anonymize_players(players, account_index)
 	
-	return players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag
+	return players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, SethBot
 			
 
 
@@ -1748,6 +1806,139 @@ def get_stats_from_fight_json(fight_json, config, log):
 				num_kills += len(enemy['combatReplayData']['dead'])
 				num_downs += len(enemy['combatReplayData']['down'])
 
+	# SethBot
+
+	def moving_average(data, window_size):
+		num_elements = len(data)
+		ma = []
+		for n in range(num_elements):
+			min_tick = max(n - window_size, 0)
+			max_tick = min(n + window_size, num_elements - 1)
+			sub_data = data[min_tick:max_tick + 1]
+			ma.append(sum(sub_data) / len(sub_data))
+
+		return ma
+
+	# Seth Score
+	fight_ticks = len(fight_json['players'][0]["damage1S"][0])
+	squad_damage_per_tick = []
+	for fight_tick in range(fight_ticks - 1):
+		squad_damage_on_tick = 0
+		for player in fight_json['players']:
+			squad_damage_on_tick += player["damage1S"][0][fight_tick + 1] - player["damage1S"][0][fight_tick]
+		squad_damage_per_tick.append(squad_damage_on_tick)
+
+	squad_damage_total = sum(squad_damage_per_tick)
+	squad_damage_per_tick_ma = moving_average(squad_damage_per_tick, 1)
+	squad_damage_ma_total = sum(squad_damage_per_tick_ma)
+
+	for player in fight_json['players']:
+		sethBot_prof_name = "{{"+player['profession']+"}} "+player['name']		
+		if sethBot_prof_name not in SethBot:
+			SethBot[sethBot_prof_name] = {}
+			SethBot[sethBot_prof_name]["name"] = player['name']
+			SethBot[sethBot_prof_name]["profession"] = player['profession']
+			SethBot[sethBot_prof_name]["Seth_Score"] = 0
+			SethBot[sethBot_prof_name]["Chunk_Damage"] = 0
+			SethBot[sethBot_prof_name]["Chunk_Damage_Total"] = 0
+			SethBot[sethBot_prof_name]["Chunk_Damage_7"] = 0
+			SethBot[sethBot_prof_name]["Chunk_Damage_Total_7"] = 0
+			SethBot[sethBot_prof_name]["Carrion_Damage"] = 0
+			SethBot[sethBot_prof_name]["Carrion_Damage_Total"] = 0
+			SethBot[sethBot_prof_name]["Damage_Total"] = 0
+			SethBot[sethBot_prof_name]["Squad_Damage_Total"] = 0
+			SethBot[sethBot_prof_name]["Downs"] = 0
+			SethBot[sethBot_prof_name]["Kills"] = 0
+
+		SethBot[sethBot_prof_name]["Damage_Total"] += player["damage1S"][0][fight_ticks - 1]
+		SethBot[sethBot_prof_name]["Squad_Damage_Total"] += squad_damage_total
+
+		for statsTarget in player["statsTargets"]:
+			SethBot[sethBot_prof_name]["Downs"] += statsTarget[0]['downed']
+			SethBot[sethBot_prof_name]["Kills"] += statsTarget[0]['killed']
+
+		player_damage_per_tick = [player["damage1S"][0][0]]
+		for fight_tick in range(fight_ticks - 1):
+			player_damage_per_tick.append(player["damage1S"][0][fight_tick + 1] - player["damage1S"][0][fight_tick])
+
+		player_damage_ma = moving_average(player_damage_per_tick, 1)
+
+		for fight_tick in range(fight_ticks - 1):
+			player_damage_on_tick = player_damage_ma[fight_tick]
+			if player_damage_on_tick == 0:
+				continue
+
+			squad_damage_on_tick = squad_damage_per_tick_ma[fight_tick]
+			if squad_damage_on_tick == 0:
+				continue
+
+			squad_damage_percent = squad_damage_on_tick / squad_damage_ma_total
+
+			SethBot[sethBot_prof_name]["Seth_Score"] += player_damage_on_tick * squad_damage_percent * fight_ticks
+
+	# Chunk damage: Damage done within X seconds of target down
+	chunk_damage_seconds_options = [2, 7]
+	for index, target in enumerate(fight_json['targets']):
+		if 'enemyPlayer' in target and target['enemyPlayer'] == True and 'combatReplayData' in target and len(target['combatReplayData']['down']):
+			for chunk_damage_seconds in chunk_damage_seconds_options:
+				chunk_damage_name = "Chunk_Damage"
+				chunk_damage_total_name = "Chunk_Damage_Total"
+				if chunk_damage_seconds != chunk_damage_seconds_options[0]:
+					chunk_damage_name += "_" + str(chunk_damage_seconds)
+					chunk_damage_total_name += "_" + str(chunk_damage_seconds)
+	
+				targetDowns = dict(target['combatReplayData']['down'])
+				for targetDownsIndex, (downKey, downValue) in enumerate(targetDowns.items()):
+					downIndex = math.ceil(downKey / 1000)
+					startIndex = max(0, math.ceil(downKey / 1000) - chunk_damage_seconds)
+					if targetDownsIndex > 0:
+						lastDownKey, lastDownValue = list(targetDowns.items())[targetDownsIndex - 1]
+						lastDownIndex = math.ceil(lastDownKey / 1000)
+						if lastDownIndex == downIndex:
+							# Probably an ele in mist form
+							continue
+						startIndex = max(startIndex, lastDownIndex)
+
+					squad_damage_on_target = 0
+					for player in fight_json['players']:
+						sethBot_prof_name = "{{"+player['profession']+"}} "+player['name']
+
+						damage_on_target = player["targetDamage1S"][index][0]
+						player_damage = damage_on_target[downIndex] - damage_on_target[startIndex]
+
+						SethBot[sethBot_prof_name][chunk_damage_name] += player_damage
+						squad_damage_on_target += player_damage
+
+					for player in fight_json['players']:
+						sethBot_prof_name = "{{"+player['profession']+"}} "+player['name']
+
+						SethBot[sethBot_prof_name][chunk_damage_total_name] += squad_damage_on_target
+
+	# Carrion damage: damage to downs that die 
+	for index, target in enumerate(fight_json['targets']):
+		if 'enemyPlayer' in target and target['enemyPlayer'] == True and 'combatReplayData' in target and len(target['combatReplayData']['dead']):
+			targetDeaths = dict(target['combatReplayData']['dead'])
+			targetDowns = dict(target['combatReplayData']['down'])
+			for deathKey, deathValue in targetDeaths.items():
+				for downKey, downValue in targetDowns.items():
+					if deathKey == downValue:
+						dmgEnd = math.ceil(deathKey / 1000)
+						dmgStart = math.floor(downKey / 1000)
+
+						total_carrion_damage = 0
+						for player in fight_json['players']:
+							sethBot_prof_name = "{{"+player['profession']+"}} "+player['name']
+							damage_on_target = player["targetDamage1S"][index][0]
+							carrion_damage = damage_on_target[dmgEnd] - damage_on_target[dmgStart]
+
+							SethBot[sethBot_prof_name]["Carrion_Damage"] += carrion_damage
+							total_carrion_damage += carrion_damage
+
+						for player in fight_json['players']:
+							sethBot_prof_name = "{{"+player['profession']+"}} "+player['name']
+							SethBot[sethBot_prof_name]["Carrion_Damage_Total"] += total_carrion_damage
+	# /SethBot
+
 	for player in fight_json['players']:
 		squadDps_name = player['name']
 		squadDps_profession = player['profession']
@@ -2003,7 +2194,7 @@ def get_stats_from_fight_json(fight_json, config, log):
 			if extension['name'] == "Healing Stats":
 				players_running_healing_addon = extension['runningExtension']
 		
-	return fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag
+	return fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, SethBot
 
 
 
@@ -2323,7 +2514,7 @@ def write_stats_chart(players, top_players, stat, myDate, input_directory, confi
 	chart_Output.close()
 # 	end write TW5 Chart tids
 
-def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, output_file):
+def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, SethBot, output_file):
 	json_dict = {}
 	json_dict["overall_raid_stats"] = {key: value for key, value in overall_raid_stats.items()}
 	json_dict["overall_squad_stats"] = {key: value for key, value in overall_squad_stats.items()}
@@ -2343,6 +2534,7 @@ def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_
 	json_dict["auras_TableIn"] =  {key: value for key, value in auras_TableIn.items()}
 	json_dict["auras_TableOut"] =  {key: value for key, value in auras_TableOut.items()}
 	json_dict["Death_OnTag"] =  {key: value for key, value in Death_OnTag.items()}
+	json_dict["SethBot"] =  {key: value for key, value in SethBot.items()}
 	json_dict["downed_Healing"] =  {key: value for key, value in downed_Healing.items()}
 	
 	
