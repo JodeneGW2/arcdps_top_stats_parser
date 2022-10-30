@@ -66,7 +66,7 @@ if __name__ == '__main__':
 	print_string = "Considering fights with at least "+str(config.min_allied_players)+" allied players and at least "+str(config.min_enemy_players)+" enemies that took longer than "+str(config.min_fight_duration)+" s."
 	myprint(log, print_string)
 
-	players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag = collect_stat_data(args, config, log, args.anonymize)    
+	players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPSStats = collect_stat_data(args, config, log, args.anonymize)    
 
 	# create xls file if it doesn't exist
 	book = xlwt.Workbook(encoding="utf-8")
@@ -142,7 +142,8 @@ if __name__ == '__main__':
 					'<$button set="!!curTab" setTo="Auras - Out" selectedClass="" class="btn btn-sm btn-dark" style=""> Auras - Out </$button>',
 					'<$button set="!!curTab" setTo="Death_OnTag" selectedClass="" class="btn btn-sm btn-dark" style=""> Death OnTag </$button>',
 					'<$button set="!!curTab" setTo="Downed_Healing" selectedClass="" class="btn btn-sm btn-dark" style=""> Downed Healing </$button>',
-					'<$button set="!!curTab" setTo="Offensive Stats" selectedClass="" class="btn btn-sm btn-dark" style=""> Offensive Stats </$button>'
+					'<$button set="!!curTab" setTo="Offensive Stats" selectedClass="" class="btn btn-sm btn-dark" style=""> Offensive Stats </$button>',
+					'<$button set="!!curTab" setTo="DPSStats" selectedClass="" class="btn btn-sm btn-dark" style=""> DPS Stats </$button>'
 	)
 	for item in Nav_Bar_Items:
 		myprint(output, item)
@@ -379,7 +380,7 @@ if __name__ == '__main__':
 		#JEL-Tweaked to output TW5 output to maintain formatted table and slider (https://drevarr.github.io/FluxCapacity.html)
 		myprint(output, "</$reveal>\n")
 
-		write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, args.json_output_filename)
+		write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPSStats, args.json_output_filename)
 
 	#print table of accounts that fielded support characters
 	myprint(output,'<$reveal type="match" state="!!curTab" text="Support">')
@@ -816,6 +817,71 @@ if __name__ == '__main__':
 	write_squad_offensive_xls(squad_offensive, args.xls_output_filename)
 	myprint(output, "</$reveal>\n")
 	#end Offensive Stat Table insert
+
+	#start Seth Bot insert
+	max_fightTime = 0
+	for squadDps_prof_name in uptime_Table:
+		max_fightTime = max(uptime_Table[squadDps_prof_name]['duration'], max_fightTime)
+
+	myprint(output, '<$reveal type="match" state="!!curTab" text="DPSStats">')    
+	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖" width:60%, class:"font-weight-bold">>\n\n')
+	
+	myprint(output, '\n---\n')
+	myprint(output, '!!! `Chunk Damage(t)` [`Ch(t)`] \n')
+	myprint(output, '!!! Damage done `t` seconds before an enemy goes down \n')
+	myprint(output, '!!! `Carrior Damage` [`Ca`] \n')
+	myprint(output, '!!! Damage done to down enemies that die \n')
+	myprint(output, '!!! `Ch7Ca %` {{Downed}} {{Killed}} \n')
+	myprint(output, '!!! The percentage of player damage from `Chunk(7)` and `Carrion` damage \n')
+	myprint(output, '\n---\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, '|Sortable table - Click header item to sort table |c')
+	myprint(output, '|thead-dark table-hover sortable|k')
+	output_header =  '|!Name | !Profession'
+	output_header += ' | ! <span data-tooltip="Number of seconds player was in squad logs">Seconds</span>'
+	output_header += '| ☠️ | !🔻/min| !⚰/min| !DPS'
+	output_header += '| 💀'
+	output_header += ' | ! <span data-tooltip="% of squad DPS">DPS %</span>'
+	output_header += '| ! <span data-tooltip="% of damage done 2 seconds before an enemy goes down">Ch(2) %</span>'
+	output_header += '| ! <span data-tooltip="% of damage done to down enemies that die">Ca %</span>'
+	output_header += '| 👻'
+	output_header += ' | ! <span data-tooltip="% of player damage from Chunk(7) and Carrion damage">Ch7Ca %</span>'
+	output_header += '| ! <span data-tooltip="DPS weighted by squad coordination">CDPS</span>'
+	output_header += '|h'
+	myprint(output, output_header)
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = uptime_Table[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)
+		output_string += '| ☠️'
+		output_string += ' | '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Downs'])+' total downs">'+'{:.2f}'.format(round(DPSStats[DPSStats_prof_name]['Downs'] / (fightTime / 60), 2))+'</span>'
+		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Kills'])+' total kills">'+'{:.2f}'.format(round(DPSStats[DPSStats_prof_name]['Kills'] / (fightTime / 60), 2))+'</span>'
+		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' damage over '+my_value(fightTime)+' seconds">'+my_value(round(DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime))+'</span>'
+		output_string += '| 💀'
+		output_string += ' | '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' of '+my_value(DPSStats[DPSStats_prof_name]['Squad_Damage_Total'])+' squad damage">'+'{:.2f}'.format(round(100 * DPSStats[DPSStats_prof_name]['Damage_Total'] / DPSStats[DPSStats_prof_name]['Squad_Damage_Total'], 2))+'%'+'</span>'
+		if DPSStats[DPSStats_prof_name]['Chunk_Damage_Total']:
+			output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage'])+' of '+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'])+' chunk(2) damage">'+'{:.2f}'.format(round(100 * DPSStats[DPSStats_prof_name]['Chunk_Damage'] / DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'], 2))+'%'+'</span>'
+		else:
+			output_string += '| 0.00%'
+		if DPSStats[DPSStats_prof_name]['Carrion_Damage_Total']:
+			output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Carrion_Damage'])+' of '+my_value(DPSStats[DPSStats_prof_name]['Carrion_Damage_Total'])+' carrion damage">'+'{:.2f}'.format(round(100 * DPSStats[DPSStats_prof_name]['Carrion_Damage'] / DPSStats[DPSStats_prof_name]['Carrion_Damage_Total'], 2))+'%'+'</span>'
+		else:
+			output_string += '| 0.00%'
+		output_string += '| 👻'
+		output_string += ' | '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage_7'])+' chunk(7) and '+my_value(DPSStats[DPSStats_prof_name]['Carrion_Damage'])+' carrion damage of '+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' damage">'+'{:.2f}'.format(round(100 * (DPSStats[DPSStats_prof_name]['Chunk_Damage_7'] + DPSStats[DPSStats_prof_name]['Carrion_Damage']) / DPSStats[DPSStats_prof_name]['Damage_Total'], 2))+'%'+'</span>'
+		output_string += '| '+'<span data-tooltip="'+my_value(round(DPSStats[DPSStats_prof_name]['Coordination_Damage']))+' coordination weighted DPS over '+my_value(fightTime)+' seconds">'+my_value(round(DPSStats[DPSStats_prof_name]['Coordination_Damage'] / fightTime))+'</span>' + ' |'
+	
+		myprint(output, output_string)
+
+	write_DPSStats_xls(DPSStats, uptime_Table, players, args.xls_output_filename)
+	myprint(output, "</$reveal>\n")
+	#end Seth Bot insert
 
 	for stat in config.stats_to_compute:
 		if stat == 'dist':
