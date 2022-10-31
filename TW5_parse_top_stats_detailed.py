@@ -78,7 +78,7 @@ if __name__ == '__main__':
 	myDate = datetime.datetime.now()
 
 	myprint(output, 'created: '+myDate.strftime("%Y%m%d%H%M%S"))
-	myprint(output, 'creator: Drevarr ')
+	myprint(output, 'creator: postman & Jodene ')
 	myprint(output, 'caption: '+myDate.strftime("%Y%m%d")+'-WvW-Log-Review')
 	myprint(output, 'curTab: Overview')
 	myprint(output, 'curFight: Fight-1')
@@ -91,7 +91,7 @@ if __name__ == '__main__':
 	#End Tid file header
 
 	#JEL-Tweaked to output TW5 formatting (https://drevarr.github.io/FluxCapacity.html)
-	print_string = "__''Flux Capacity Node Farmers - WVW Log Review''__\n"
+	print_string = "__''Strike Force - WVW Log Review''__\n"
 	myprint(output, print_string)
 
 	# print overall stats
