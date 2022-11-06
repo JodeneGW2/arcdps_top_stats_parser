@@ -120,10 +120,10 @@ document.addEventListener('click', function (e) {
     function getValue(element) {
       // If you aren't using data-sort and want to make it just the tiniest bit smaller/faster
       // comment this line and uncomment the next one
-      return (
-        (alt_sort && element.getAttribute('data-sort-alt')) || element.getAttribute('data-sort') || element.innerText
-      )
-      // return element.innerText
+      //return (
+      //  (alt_sort && element.getAttribute('data-sort-alt')) || element.getAttribute('data-sort') || element.innerText
+      //)
+      return element.innerText
     }
     if (regex_table.test(table.className)) {
       var column_index
@@ -157,8 +157,8 @@ document.addEventListener('click', function (e) {
 
       // sort them using custom built in array sort.
       rows.sort(function (a, b) {
-        var x = getValue((reverse ? a : b).cells[column_index])
-        var y = getValue((reverse ? b : a).cells[column_index])
+        var x = getValue((reverse ? a : b).cells[column_index]).replace(/,|%/g, "")
+        var y = getValue((reverse ? b : a).cells[column_index]).replace(/,|%/g, "")
         return isNaN(x - y) ? x.localeCompare(y) : x - y
       })
 

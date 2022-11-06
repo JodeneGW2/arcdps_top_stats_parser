@@ -1,5 +1,6 @@
 #Color codes for each class
 Profession = {
+  "Guardian":"#72C1D9",
   "Dragonhunter":"#72C1D9",
   "Firebrand":"#72C1D9",
   "Willbender":"#72C1D9",
