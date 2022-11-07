@@ -49,6 +49,9 @@ min_fight_duration = 30
 # minimum number of enemies to consider a fight in the stats
 min_enemy_players = 10
 
+# Show Chunk Damage table
+show_chunk_damage_table = False
+
 # Produce Charts for stats_to_compute
 charts = True
 

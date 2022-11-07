@@ -86,6 +86,9 @@ if __name__ == '__main__':
 	myprint(output, 'curControl-Out: Blinded')
 	myprint(output, 'curAuras-Out: Fire')
 	myprint(output, 'curAuras-In: Fire')
+	myprint(output, 'curChunkTableType: PS')
+	myprint(output, 'curBurstTableType: PS')
+	myprint(output, 'curChunkBurstTableType: PS')
 	myprint(output, 'tags: Logs [['+myDate.strftime("%Y")+'-'+myDate.strftime("%m")+' Log Reviews]]')
 	myprint(output, 'title: '+myDate.strftime("%Y%m%d")+'-WvW-Log-Review\n')
 	#End Tid file header
@@ -98,6 +101,13 @@ if __name__ == '__main__':
 	overall_squad_stats = get_overall_squad_stats(fights, config)
 	overall_raid_stats = get_overall_raid_stats(fights)
 	total_fight_duration = print_total_squad_stats(fights, overall_squad_stats, overall_raid_stats, found_healing, found_barrier, config, output)
+
+	experimental_dps_items = filter(None, [
+		'<$button set="!!curTab" setTo="DPSStats" selectedClass="" class="btn btn-sm btn-dark" style=""> DPS Stats </$button>',
+		'<$button set="!!curTab" setTo="Chunk Damage" selectedClass="" class="btn btn-sm btn-dark" style=""> Chunk Damage </$button>' if config.show_chunk_damage_table else None,
+		'<$button set="!!curTab" setTo="Burst Damage" selectedClass="" class="btn btn-sm btn-dark" style=""> Burst Damage </$button>',
+		'<$button set="!!curTab" setTo="Ch7Ca Burst Damage" selectedClass="" class="btn btn-sm btn-dark" style=""> Ch7Ca Burst Damage </$button>'
+	])
 
 	#Start nav_bar_menu for TW5
 	Nav_Bar_Items= ('<$button set="!!curTab" setTo="Overview" selectedClass="" class="btn btn-sm btn-dark" style=""> Session Overview </$button>',
@@ -143,7 +153,7 @@ if __name__ == '__main__':
 					'<$button set="!!curTab" setTo="Death_OnTag" selectedClass="" class="btn btn-sm btn-dark" style=""> Death OnTag </$button>',
 					'<$button set="!!curTab" setTo="Downed_Healing" selectedClass="" class="btn btn-sm btn-dark" style=""> Downed Healing </$button>',
 					'<$button set="!!curTab" setTo="Offensive Stats" selectedClass="" class="btn btn-sm btn-dark" style=""> Offensive Stats </$button>',
-					'<$button set="!!curTab" setTo="DPSStats" selectedClass="" class="btn btn-sm btn-dark" style=""> DPS Stats </$button>'
+					*experimental_dps_items
 	)
 	for item in Nav_Bar_Items:
 		myprint(output, item)
@@ -824,7 +834,7 @@ if __name__ == '__main__':
 		max_fightTime = max(uptime_Table[squadDps_prof_name]['duration'], max_fightTime)
 
 	myprint(output, '<$reveal type="match" state="!!curTab" text="DPSStats">')    
-	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖" width:60%, class:"font-weight-bold">>\n\n')
+	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖 - These are probably wrong and will change" width:60%, class:"font-weight-bold">>\n\n')
 	
 	myprint(output, '\n---\n')
 	myprint(output, '!!! `Chunk Damage(t)` [`Ch(t)`] \n')
@@ -865,8 +875,8 @@ if __name__ == '__main__':
 		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' damage over '+my_value(fightTime)+' seconds">'+my_value(round(DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime))+'</span>'
 		output_string += '| 💀'
 		output_string += ' | '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' of '+my_value(DPSStats[DPSStats_prof_name]['Squad_Damage_Total'])+' squad damage">'+'{:.2f}'.format(round(100 * DPSStats[DPSStats_prof_name]['Damage_Total'] / DPSStats[DPSStats_prof_name]['Squad_Damage_Total'], 2))+'%'+'</span>'
-		if DPSStats[DPSStats_prof_name]['Chunk_Damage_Total']:
-			output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage'])+' of '+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'])+' chunk(2) damage">'+'{:.2f}'.format(round(100 * DPSStats[DPSStats_prof_name]['Chunk_Damage'] / DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'], 2))+'%'+'</span>'
+		if DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'][2]:
+			output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage'][2])+' of '+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'][2])+' chunk(2) damage">'+'{:.2f}'.format(round(100 * DPSStats[DPSStats_prof_name]['Chunk_Damage'][2] / DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'][2], 2))+'%'+'</span>'
 		else:
 			output_string += '| 0.00%'
 		if DPSStats[DPSStats_prof_name]['Carrion_Damage_Total']:
@@ -874,7 +884,7 @@ if __name__ == '__main__':
 		else:
 			output_string += '| 0.00%'
 		output_string += '| 👻'
-		output_string += ' | '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage_7'])+' chunk(7) and '+my_value(DPSStats[DPSStats_prof_name]['Carrion_Damage'])+' carrion damage of '+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' damage">'+'{:.2f}'.format(round(100 * (DPSStats[DPSStats_prof_name]['Chunk_Damage_7'] + DPSStats[DPSStats_prof_name]['Carrion_Damage']) / DPSStats[DPSStats_prof_name]['Damage_Total'], 2))+'%'+'</span>'
+		output_string += ' | '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage'][7])+' chunk(7) and '+my_value(DPSStats[DPSStats_prof_name]['Carrion_Damage'])+' carrion damage of '+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' damage">'+'{:.2f}'.format(round(100 * (DPSStats[DPSStats_prof_name]['Chunk_Damage'][7] + DPSStats[DPSStats_prof_name]['Carrion_Damage']) / DPSStats[DPSStats_prof_name]['Damage_Total'], 2))+'%'+'</span>'
 		output_string += '| '+'<span data-tooltip="'+my_value(round(DPSStats[DPSStats_prof_name]['Coordination_Damage']))+' coordination weighted DPS over '+my_value(fightTime)+' seconds">'+my_value(round(DPSStats[DPSStats_prof_name]['Coordination_Damage'] / fightTime))+'</span>' + ' |'
 	
 		myprint(output, output_string)
@@ -882,6 +892,241 @@ if __name__ == '__main__':
 	write_DPSStats_xls(DPSStats, uptime_Table, players, args.xls_output_filename)
 	myprint(output, "</$reveal>\n")
 	#end Seth Bot insert
+
+	# Chunk Damage
+	myprint(output, '<$reveal type="match" state="!!curTab" text="Chunk Damage">\n')    
+	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖 - These are probably wrong and will change" width:60%, class:"font-weight-bold">>\n\n')
+	
+	myprint(output, '\n---\n')
+	myprint(output, '!!! `Chunk Damage(t)` [`Ch(t)`] \n')
+	myprint(output, '!!! Damage done `t` seconds before an enemy goes down \n')
+	myprint(output, '\n---\n')
+	myprint(output, '!! Chunk Damage as a % of personal DPS')
+
+	# First the per second version of the table
+	myprint(output, '<$reveal type="match" state="!!curChunkTableType" text="PS">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, '| <$radio field="curChunkTableType" value="PS">&nbsp;PS</$radio>&nbsp; &nbsp;<$radio field="curChunkTableType" value="Cumulative">&nbsp;Cumulative</$radio> |c')
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Profession'
+	output_string += ' | ! <span data-tooltip="Number of seconds player was in squad logs">Seconds</span>|'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = uptime_Table[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)+'|'
+		for i in range(1, 21):
+			if DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'][i]:
+				output_string += ' <span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage'][i] - DPSStats[DPSStats_prof_name]['Chunk_Damage'][i - 1])+' of '+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' damage">'+'{:.2f}'.format(round(100 * (DPSStats[DPSStats_prof_name]['Chunk_Damage'][i] - DPSStats[DPSStats_prof_name]['Chunk_Damage'][i - 1]) / DPSStats[DPSStats_prof_name]['Damage_Total'], 2))+'%</span>|'
+			else:
+				output_string += ' 0.0%|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")     
+
+	# Next the cumulative version of the table
+	myprint(output, '<$reveal type="match" state="!!curChunkTableType" text="Cumulative">\n')
+	
+	myprint(output, '|table-caption-top|k')
+	myprint(output, '| <$radio field="curChunkTableType" value="PS">&nbsp;PS</$radio>&nbsp; &nbsp;<$radio field="curChunkTableType" value="Cumulative">&nbsp;Cumulative</$radio> |c')
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Profession'
+	output_string += ' | ! <span data-tooltip="Number of seconds player was in squad logs">Seconds</span>|'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = uptime_Table[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)+'|'
+		for i in range(1, 21):
+			if DPSStats[DPSStats_prof_name]['Chunk_Damage_Total'][i]:
+				output_string += ' <span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage'][i])+' of '+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' damage">'+'{:.2f}'.format(round(100 * DPSStats[DPSStats_prof_name]['Chunk_Damage'][i] / DPSStats[DPSStats_prof_name]['Damage_Total'], 2))+'%</span>|'
+			else:
+				output_string += ' 0.0%|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")   
+
+	myprint(output, "</$reveal>\n")     
+	# end Chunk Damage
+
+	# Burst Damage
+	myprint(output, '<$reveal type="match" state="!!curTab" text="Burst Damage">\n')    
+	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖 - These are probably wrong and will change" width:60%, class:"font-weight-bold">>\n\n')
+	
+	myprint(output, '\n---\n')
+	myprint(output, '!!! `Burst Damage(t)` [`Bur(t)`] \n')
+	myprint(output, '!!! Maximum damage done over any `t` second interval \n')
+	myprint(output, '\n---\n')
+
+	# First the per second version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstTableType" text="PS">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, '| <$radio field="curBurstTableType" value="PS">&nbsp;PS</$radio>&nbsp; &nbsp;<$radio field="curBurstTableType" value="Cumulative">&nbsp;Cumulative</$radio> |c')
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Profession'
+	output_string += ' | ! <span data-tooltip="Number of seconds player was in squad logs">Seconds</span>|'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = uptime_Table[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)+'|'
+		for i in range(1, 21):
+			output_string += ' '+my_value(round(DPSStats[DPSStats_prof_name]['Burst_Damage'][i] / i))+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+
+	# Next the cumulative version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstTableType" text="Cumulative">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, '| <$radio field="curBurstTableType" value="PS">&nbsp;PS</$radio>&nbsp; &nbsp;<$radio field="curBurstTableType" value="Cumulative">&nbsp;Cumulative</$radio> |c')
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Profession'
+	output_string += ' | ! <span data-tooltip="Number of seconds player was in squad logs">Seconds</span>|'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = uptime_Table[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)+'|'
+		for i in range(1, 21):
+			output_string += ' '+my_value(DPSStats[DPSStats_prof_name]['Burst_Damage'][i])+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+
+	myprint(output, "\n</$reveal>\n")     
+	# end Burst Damage
+
+	# Ch7Ca Burst Damage
+	myprint(output, '<$reveal type="match" state="!!curTab" text="Ch7Ca Burst Damage">\n')    
+	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖 - These are probably wrong and will change" width:60%, class:"font-weight-bold">>\n\n')
+	
+	myprint(output, '\n---\n')
+	myprint(output, '!!! `Ch7Ca Burst Damage(t)` [`Bur(t)`] \n')
+	myprint(output, '!!! Maximum Chunk(7) + Carrion damage done over any `t` second interval \n')
+	myprint(output, '\n---\n')
+
+	# First the per second version of the table
+	myprint(output, '<$reveal type="match" state="!!curChunkBurstTableType" text="PS">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, '| <$radio field="curChunkBurstTableType" value="PS">&nbsp;PS</$radio>&nbsp; &nbsp;<$radio field="curChunkBurstTableType" value="Cumulative">&nbsp;Cumulative</$radio> |c')
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Profession'
+	output_string += ' | ! <span data-tooltip="Number of seconds player was in squad logs">Seconds</span>|'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = uptime_Table[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)+'|'
+		for i in range(1, 21):
+			output_string += ' '+my_value(round(DPSStats[DPSStats_prof_name]['Ch7Ca_Burst_Damage'][i] / i))+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+
+	# Next the cumulative version of the table
+	myprint(output, '<$reveal type="match" state="!!curChunkBurstTableType" text="Cumulative">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, '| <$radio field="curChunkBurstTableType" value="PS">&nbsp;PS</$radio>&nbsp; &nbsp;<$radio field="curChunkBurstTableType" value="Cumulative">&nbsp;Cumulative</$radio> |c')
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Profession'
+	output_string += ' | ! <span data-tooltip="Number of seconds player was in squad logs">Seconds</span>|'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = uptime_Table[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)+'|'
+		for i in range(1, 21):
+			output_string += ' '+my_value(DPSStats[DPSStats_prof_name]['Ch7Ca_Burst_Damage'][i])+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+
+	myprint(output, "\n</$reveal>\n")     
+	# end Ch7Ca Burst Damage
 
 	for stat in config.stats_to_compute:
 		if stat == 'dist':
