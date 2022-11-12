@@ -66,7 +66,7 @@ if __name__ == '__main__':
 	print_string = "Considering fights with at least "+str(config.min_allied_players)+" allied players and at least "+str(config.min_enemy_players)+" enemies that took longer than "+str(config.min_fight_duration)+" s."
 	myprint(log, print_string)
 
-	players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag = collect_stat_data(args, config, log, args.anonymize)    
+	players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPSStats = collect_stat_data(args, config, log, args.anonymize)    
 
 	# create xls file if it doesn't exist
 	book = xlwt.Workbook(encoding="utf-8")
@@ -86,6 +86,8 @@ if __name__ == '__main__':
 	myprint(output, 'curControl-Out: Blinded')
 	myprint(output, 'curAuras-Out: Fire')
 	myprint(output, 'curAuras-In: Fire')
+	myprint(output, 'curBurstTableDamage: Ch5Ca')
+	myprint(output, 'curBurstTableType: Cumulative')
 	myprint(output, 'tags: Logs [['+myDate.strftime("%Y")+'-'+myDate.strftime("%m")+' Log Reviews]]')
 	myprint(output, 'title: '+myDate.strftime("%Y%m%d")+'-WvW-Log-Review\n')
 	#End Tid file header
@@ -144,6 +146,8 @@ if __name__ == '__main__':
 					'<$button set="!!curTab" setTo="Death_OnTag" selectedClass="" class="btn btn-sm btn-dark" style=""> Death OnTag </$button>',
 					'<$button set="!!curTab" setTo="Downed_Healing" selectedClass="" class="btn btn-sm btn-dark" style=""> Downed Healing </$button>',
 					'<$button set="!!curTab" setTo="Offensive Stats" selectedClass="" class="btn btn-sm btn-dark" style=""> Offensive Stats </$button>',
+					'<$button set="!!curTab" setTo="DPSStats" selectedClass="" class="btn btn-sm btn-dark" style=""> DPS Stats </$button>',
+					'<$button set="!!curTab" setTo="Burst Damage" selectedClass="" class="btn btn-sm btn-dark" style=""> Burst Damage </$button>',
 					'<$button set="!!curTab" setTo="Dashboard" selectedClass="" class="btn btn-sm btn-dark" style=""> Dashboard </$button>'
 	)
 	for item in Nav_Bar_Items:
@@ -381,7 +385,7 @@ if __name__ == '__main__':
 		#JEL-Tweaked to output TW5 output to maintain formatted table and slider (https://drevarr.github.io/FluxCapacity.html)
 		myprint(output, "</$reveal>\n")
 
-		write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, args.json_output_filename)
+		write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPSStats, args.json_output_filename)
 
 	#print table of accounts that fielded support characters
 	myprint(output,'<$reveal type="match" state="!!curTab" text="Support">')
@@ -875,6 +879,208 @@ if __name__ == '__main__':
 
 	myprint(output, "</$reveal>\n")
 	#end Dashboard insert
+
+	#start DPS Stats insert
+	max_fightTime = 0
+	for squadDps_prof_name in uptime_Table:
+		max_fightTime = max(uptime_Table[squadDps_prof_name]['duration'], max_fightTime)
+
+	myprint(output, '<$reveal type="match" state="!!curTab" text="DPSStats">')    
+	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖" width:60%, class:"font-weight-bold">>\n\n')
+	
+	myprint(output, '\n---\n')
+	myprint(output, '!!! `Chunk Damage(t)` [`Ch(t)DPS`] \n')
+	myprint(output, '!!! Damage done `t` seconds before an enemy goes down \n')
+	myprint(output, '!!! `Carrior Damage` [`CaDPS`] \n')
+	myprint(output, '!!! Damage done to down enemies that die \n')
+	myprint(output, '!!! `Coordination Damage` [`CDPS`] \n')
+	myprint(output, '!!! Damage weighted by squad coordination \n')
+	myprint(output, '\n---\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, '|Sortable table - Click header item to sort table |c')
+	myprint(output, '|thead-dark table-hover sortable|k')
+	output_header =  '|!Name | !Class'
+	output_header += ' | ! <span data-tooltip="Number of seconds player was in squad logs">Seconds</span>'
+	output_header += '| ☠️ '
+	output_header += '| !DPS| !Ch2DPS| !Ch5DPS| !CaDPS| !CDPS| 👻 | !🔻/min| !⚰/min'
+	output_header += '|h'
+	myprint(output, output_header)
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)
+		output_string += '| ☠️ '
+		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Damage_Total'])+' total damage">'+my_value(round(DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime))+'</span>'
+		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage'][2])+' chunk(2) damage">'+my_value(round(DPSStats[DPSStats_prof_name]['Chunk_Damage'][2] / fightTime))+'</span>'
+		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Chunk_Damage'][5])+' chunk (5) damage">'+my_value(round(DPSStats[DPSStats_prof_name]['Chunk_Damage'][5] / fightTime))+'</span>'
+		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Carrion_Damage'])+' carrion damage">'+my_value(round(DPSStats[DPSStats_prof_name]['Carrion_Damage'] / fightTime))+'</span>'
+		output_string += '| '+'<span data-tooltip="'+my_value(round(DPSStats[DPSStats_prof_name]['Coordination_Damage']))+' coordination weighted damage">'+my_value(round(DPSStats[DPSStats_prof_name]['Coordination_Damage'] / fightTime))+'</span>'
+		output_string += '| 👻 '
+		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Downs'])+' total downs">'+'{:.2f}'.format(round(DPSStats[DPSStats_prof_name]['Downs'] / (fightTime / 60), 2))+'</span>'
+		output_string += '| '+'<span data-tooltip="'+my_value(DPSStats[DPSStats_prof_name]['Kills'])+' total kills">'+'{:.2f}'.format(round(DPSStats[DPSStats_prof_name]['Kills'] / (fightTime / 60), 2))+'</span>'
+		output_string += '|'
+
+		myprint(output, output_string)
+
+	write_DPSStats_xls(DPSStats, args.xls_output_filename)
+	myprint(output, "</$reveal>\n")
+	#end DPS Stats insert
+
+	# Burst Damage
+	myprint(output, '<$reveal type="match" state="!!curTab" text="Burst Damage">\n')    
+	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖" width:60%, class:"font-weight-bold">>\n\n')
+	
+	myprint(output, '\n---\n')
+	myprint(output, '!!! `Burst Damage(t)` [`Bur(t)`] \n')
+	myprint(output, '!!! Maximum damage done over any `t` second interval \n')
+	myprint(output, '\n---\n')
+	myprint(output, '!!! `Ch5Ca Burst Damage(t)` [`Ch5CaBur(t)`] \n')
+	myprint(output, '!!! Maximum Chunk(5) + Carrion damage done over any `t` second interval \n')
+	myprint(output, '\n---\n')
+
+	burst_menu_string = '| '
+	burst_menu_string += '<$radio field="curBurstTableDamage" value="Ch5Ca">&nbsp;Ch5Ca Damage</$radio>&nbsp; &nbsp;<$radio field="curBurstTableDamage" value="Damage">&nbsp;Total Damage</$radio>'
+	burst_menu_string += '&nbsp;&nbsp;/&nbsp;&nbsp;'
+	burst_menu_string += '<$radio field="curBurstTableType" value="Cumulative">&nbsp;Cumulative</$radio>&nbsp; &nbsp;<$radio field="curBurstTableType" value="PS">&nbsp;PS</$radio>'
+	burst_menu_string += ' |c'
+
+	# First the per second version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstTableDamage" text="Damage">\n')
+	myprint(output, '<$reveal type="match" state="!!curBurstTableType" text="PS">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, burst_menu_string)
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Class |'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '
+		for i in range(1, 21):
+			output_string += ' '+my_value(round(DPSStats[DPSStats_prof_name]['Burst_Damage'][i] / i))+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+
+	# Next the cumulative version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstTableType" text="Cumulative">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, burst_menu_string)
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Class |'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '
+		for i in range(1, 21):
+			output_string += ' '+my_value(DPSStats[DPSStats_prof_name]['Burst_Damage'][i])+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+	myprint(output, "\n</$reveal>\n")
+
+	# Ch5Ca Burst Damage
+	# First the per second version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstTableDamage" text="Ch5Ca">\n')
+	myprint(output, '<$reveal type="match" state="!!curBurstTableType" text="PS">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, burst_menu_string)
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Class |'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '
+		for i in range(1, 21):
+			output_string += ' '+my_value(round(DPSStats[DPSStats_prof_name]['Ch5Ca_Burst_Damage'][i] / i))+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+
+	# Next the cumulative version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstTableType" text="Cumulative">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, burst_menu_string)
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Class |'
+
+	for i in range(1, 21):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '
+		for i in range(1, 21):
+			output_string += ' '+my_value(DPSStats[DPSStats_prof_name]['Ch5Ca_Burst_Damage'][i])+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+	myprint(output, "\n</$reveal>\n")
+
+	myprint(output, "\n</$reveal>\n")     
+	# end Ch5Ca Burst Damage
 
 	for stat in config.stats_to_compute:
 		if stat == 'dist':

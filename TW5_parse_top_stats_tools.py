@@ -154,6 +154,9 @@ On_Tag = 600
 Run_Back = 5000
 Death_OnTag = {}
 
+#Calculate DPSStats Variables
+DPSStats = {}
+
 #fetch Guild Data and Check Guild Status function
 Guild_ID = Guild_Data.Guild_ID
 API_Key = Guild_Data.API_Key
@@ -761,6 +764,94 @@ def write_Death_OnTag_xls(Death_OnTag, uptime_Table, players, xls_output_filenam
 		i=i+1
 	wb.save(xls_output_filename)
 
+def write_DPSStats_xls(DPSStats, xls_output_filename):
+	fileDate = datetime.datetime.now()
+	book = xlrd.open_workbook(xls_output_filename)
+	wb = copy(book)
+	sheet1 = wb.add_sheet("DPSStats")
+	
+	sheet1.write(0, 0, "Date")
+	sheet1.write(0, 1, "Account")
+	sheet1.write(0, 2, "Name")
+	sheet1.write(0, 3, "Profession")
+	sheet1.write(0, 4, "Attendance")
+	sheet1.write(0, 5, "Damage")
+	sheet1.write(0, 6, "Squad Damage")
+	sheet1.write(0, 7, "Downs")
+	sheet1.write(0, 8, "Kills")
+	sheet1.write(0, 9, "Coordination Damage")
+	sheet1.write(0, 10, "Carrion Damage")
+	sheet1.write(0, 11, "Squad Carrion Damage")
+	for j in range(1, 21):
+		sheet1.write(0, 11 + j, 'Chunk Damage (' + str(j) + ')')
+	for j in range(1, 21):
+		sheet1.write(0, 31 + j, 'Squad Chunk Damage (' + str(j) + ')')
+		
+	i = 0
+
+	for name in DPSStats:
+		sheet1.write(i+1, 0, fileDate.strftime("%Y-%m-%d"))
+		sheet1.write(i+1, 1, DPSStats[name]['account'])
+		sheet1.write(i+1, 2, DPSStats[name]['name'])
+		sheet1.write(i+1, 3, DPSStats[name]['profession'])
+		sheet1.write(i+1, 4, DPSStats[name]['duration'])
+		sheet1.write(i+1, 5, DPSStats[name]['Damage_Total'])
+		sheet1.write(i+1, 6, DPSStats[name]['Squad_Damage_Total'])
+		sheet1.write(i+1, 7, DPSStats[name]['Downs'])
+		sheet1.write(i+1, 8, DPSStats[name]['Kills'])
+		sheet1.write(i+1, 9, DPSStats[name]['Coordination_Damage'])
+		sheet1.write(i+1, 10, DPSStats[name]['Carrion_Damage'])
+		sheet1.write(i+1, 11, DPSStats[name]['Carrion_Damage_Total'])
+		for j in range(1, 21):
+			sheet1.write(i+1, 11 + j, DPSStats[name]['Chunk_Damage'][j])
+		for j in range(1, 21):
+			sheet1.write(i+1, 31 + j, DPSStats[name]['Chunk_Damage_Total'][j])
+		i=i+1
+	
+	# Add BurstDPS sheet
+	sheet2 = wb.add_sheet("Burst Damage")
+	
+	sheet2.write(0, 0, "Date")
+	sheet2.write(0, 1, "Account")
+	sheet2.write(0, 2, "Name")
+	sheet2.write(0, 3, "Profession")
+	for j in range(1, 21):
+		sheet2.write(0, 3 + j, 'Burst Damage (' + str(j) + ')')
+		
+	i = 0
+
+	for name in DPSStats:
+		sheet2.write(i+1, 0, fileDate.strftime("%Y-%m-%d"))
+		sheet2.write(i+1, 1, DPSStats[name]['account'])
+		sheet2.write(i+1, 2, DPSStats[name]['name'])
+		sheet2.write(i+1, 3, DPSStats[name]['profession'])
+		for j in range(1, 21):
+			sheet2.write(i+1, 3 + j, DPSStats[name]['Burst_Damage'][j])
+		i=i+1
+	
+	# Add Ch5CaBurstDPS sheet
+	sheet3 = wb.add_sheet("Ch5Ca Burst Damage")
+	
+	sheet3.write(0, 0, "Date")
+	sheet3.write(0, 1, "Account")
+	sheet3.write(0, 2, "Name")
+	sheet3.write(0, 3, "Profession")
+	for j in range(1, 21):
+		sheet3.write(0, 3 + j, 'Ch5Ca Burst Damage (' + str(j) + ')')
+		
+	i = 0
+
+	for name in DPSStats:
+		sheet3.write(i+1, 0, fileDate.strftime("%Y-%m-%d"))
+		sheet3.write(i+1, 1, DPSStats[name]['account'])
+		sheet3.write(i+1, 2, DPSStats[name]['name'])
+		sheet3.write(i+1, 3, DPSStats[name]['profession'])
+		for j in range(1, 21):
+			sheet3.write(i+1, 3 + j, DPSStats[name]['Ch5Ca_Burst_Damage'][j])
+		i=i+1
+
+	wb.save(xls_output_filename)
+
 def write_squad_offensive_xls(squad_offensive, xls_output_filename):
 	fileDate = datetime.datetime.now()
 	book = xlrd.open_workbook(xls_output_filename)
@@ -1263,7 +1354,7 @@ def collect_stat_data(args, config, log, anonymize=False):
 		json_datafile = open(file_path, encoding='utf-8')
 		json_data = json.load(json_datafile)
 		# get fight stats
-		fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag = get_stats_from_fight_json(json_data, config, log)
+		fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPSStats = get_stats_from_fight_json(json_data, config, log)
 			
 		if first:
 			first = False
@@ -1440,7 +1531,7 @@ def collect_stat_data(args, config, log, anonymize=False):
 	if anonymize:
 		anonymize_players(players, account_index)
 	
-	return players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag
+	return players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPSStats
 			
 
 
@@ -1659,6 +1750,226 @@ def get_stat_from_player_json(player_json, players_running_healing_addon, stat, 
 		return barrier
 
 
+# DPS Stats block
+arrow_cart_skill_ids = [18850, 18853, 18855, 18860, 18862, 18865, 18867, 18869, 18872]
+trebuchet_skill_ids = [21037, 21038]
+catapult_skill_ids = [20242, 20272]
+cannon_skill_ids = [14626, 14658, 14659, 18535, 18531, 18543, 19626]
+burning_oil_skill_ids = [18887]
+dragon_banner_skill_ids = [32980, 31968, 33232]
+
+siege_skill_ids = [
+	*arrow_cart_skill_ids,
+	*trebuchet_skill_ids,
+	*catapult_skill_ids,
+	*cannon_skill_ids,
+	*burning_oil_skill_ids,
+	*dragon_banner_skill_ids
+]
+
+def moving_average(data, window_size):
+	num_elements = len(data)
+	ma = []
+	for n in range(num_elements):
+		min_tick = max(n - window_size, 0)
+		max_tick = min(n + window_size, num_elements - 1)
+		sub_data = data[min_tick:max_tick + 1]
+		ma.append(sum(sub_data) / len(sub_data))
+
+	return ma
+
+def calculate_dps_stats(fight_json, fight):
+	if fight.skipped:
+		return
+
+	fight_ticks = len(fight_json['players'][0]["damage1S"][0])
+
+	damagePS = {}
+	for index, target in enumerate(fight_json['targets']):
+		if 'enemyPlayer' in target and target['enemyPlayer'] == True:
+			for player in fight_json['players']:
+				DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']		
+				if DPSStats_prof_name not in damagePS:
+					damagePS[DPSStats_prof_name] = [0] * fight_ticks
+
+				damage_on_target = player["targetDamage1S"][index][0]
+				for i in range(fight_ticks):
+					damagePS[DPSStats_prof_name][i] += damage_on_target[i]
+
+	squad_damage_per_tick = []
+	for fight_tick in range(fight_ticks - 1):
+		squad_damage_on_tick = 0
+		for player in fight_json['players']:
+			DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']		
+			player_damage = damagePS[DPSStats_prof_name]
+			squad_damage_on_tick += player_damage[fight_tick + 1] - player_damage[fight_tick]
+		squad_damage_per_tick.append(squad_damage_on_tick)
+
+	squad_damage_total = sum(squad_damage_per_tick)
+	squad_damage_per_tick_ma = moving_average(squad_damage_per_tick, 1)
+	squad_damage_ma_total = sum(squad_damage_per_tick_ma)
+
+	Ch5CaDamage1S = {}
+	UsedOffensiveSiege = {}
+
+	for player in fight_json['players']:
+		DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']		
+		if DPSStats_prof_name not in DPSStats:
+			DPSStats[DPSStats_prof_name] = {}
+			DPSStats[DPSStats_prof_name]["account"] = player['account']
+			DPSStats[DPSStats_prof_name]["name"] = player['name']
+			DPSStats[DPSStats_prof_name]["profession"] = player['profession']
+			DPSStats[DPSStats_prof_name]["duration"] = 0
+			DPSStats[DPSStats_prof_name]["Coordination_Damage"] = 0
+			DPSStats[DPSStats_prof_name]["Chunk_Damage"] = [0] * 21
+			DPSStats[DPSStats_prof_name]["Chunk_Damage_Total"] = [0] * 21
+			DPSStats[DPSStats_prof_name]["Carrion_Damage"] = 0
+			DPSStats[DPSStats_prof_name]["Carrion_Damage_Total"] = 0
+			DPSStats[DPSStats_prof_name]["Damage_Total"] = 0
+			DPSStats[DPSStats_prof_name]["Squad_Damage_Total"] = 0
+			DPSStats[DPSStats_prof_name]["Burst_Damage"] = [0] * 21
+			DPSStats[DPSStats_prof_name]["Ch5Ca_Burst_Damage"] = [0] * 21
+			DPSStats[DPSStats_prof_name]["Downs"] = 0
+			DPSStats[DPSStats_prof_name]["Kills"] = 0
+			
+			
+		Ch5CaDamage1S[DPSStats_prof_name] = [0] * fight_ticks
+		UsedOffensiveSiege[DPSStats_prof_name] = False
+			
+		player_damage = damagePS[DPSStats_prof_name]
+		
+		DPSStats[DPSStats_prof_name]["duration"] += fight.duration
+		DPSStats[DPSStats_prof_name]["Damage_Total"] += player_damage[fight_ticks - 1]
+		DPSStats[DPSStats_prof_name]["Squad_Damage_Total"] += squad_damage_total
+
+		for statsTarget in player["statsTargets"]:
+			DPSStats[DPSStats_prof_name]["Downs"] += statsTarget[0]['downed']
+			DPSStats[DPSStats_prof_name]["Kills"] += statsTarget[0]['killed']
+
+		for damage_dist in player['totalDamageDist'][0]:
+			if damage_dist['id'] in siege_skill_ids:
+				UsedOffensiveSiege[DPSStats_prof_name] = True
+
+		if "minions" in player:	
+			for minion in player["minions"]:
+				for minion_damage_dist in minion["totalDamageDist"][0]:
+					if minion_damage_dist['id'] in siege_skill_ids:
+						UsedOffensiveSiege[DPSStats_prof_name] = True
+
+		# Coordination_Damage: Damage weighted by coordination with squad
+		player_damage_per_tick = [player_damage[0]]
+		for fight_tick in range(fight_ticks - 1):
+			player_damage_per_tick.append(player_damage[fight_tick + 1] - player_damage[fight_tick])
+
+		player_damage_ma = moving_average(player_damage_per_tick, 1)
+
+		for fight_tick in range(fight_ticks - 1):
+			player_damage_on_tick = player_damage_ma[fight_tick]
+			if player_damage_on_tick == 0:
+				continue
+
+			squad_damage_on_tick = squad_damage_per_tick_ma[fight_tick]
+			if squad_damage_on_tick == 0:
+				continue
+
+			squad_damage_percent = squad_damage_on_tick / squad_damage_ma_total
+
+			DPSStats[DPSStats_prof_name]["Coordination_Damage"] += player_damage_on_tick * squad_damage_percent * fight_ticks
+
+	# Chunk damage: Damage done within X seconds of target down
+	for index, target in enumerate(fight_json['targets']):
+		if 'enemyPlayer' in target and target['enemyPlayer'] == True and 'combatReplayData' in target and len(target['combatReplayData']['down']):
+			for chunk_damage_seconds in range(1, len(DPSStats[DPSStats_prof_name]["Chunk_Damage"])):
+				targetDowns = dict(target['combatReplayData']['down'])
+				for targetDownsIndex, (downKey, downValue) in enumerate(targetDowns.items()):
+					downIndex = math.ceil(downKey / 1000)
+					startIndex = max(0, math.ceil(downKey / 1000) - chunk_damage_seconds)
+					if targetDownsIndex > 0:
+						lastDownKey, lastDownValue = list(targetDowns.items())[targetDownsIndex - 1]
+						lastDownIndex = math.ceil(lastDownKey / 1000)
+						if lastDownIndex == downIndex:
+							# Probably an ele in mist form
+							continue
+						startIndex = max(startIndex, lastDownIndex)
+
+					squad_damage_on_target = 0
+					for player in fight_json['players']:
+						DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+
+						damage_on_target = player["targetDamage1S"][index][0]
+						player_damage = damage_on_target[downIndex] - damage_on_target[startIndex]
+
+						DPSStats[DPSStats_prof_name]["Chunk_Damage"][chunk_damage_seconds] += player_damage
+						squad_damage_on_target += player_damage
+
+						if chunk_damage_seconds == 5:
+							for i in range(startIndex, downIndex):
+								Ch5CaDamage1S[DPSStats_prof_name][i] += damage_on_target[i + 1] - damage_on_target[i]
+
+					for player in fight_json['players']:
+						DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+
+						DPSStats[DPSStats_prof_name]["Chunk_Damage_Total"][chunk_damage_seconds] += squad_damage_on_target
+
+	# Carrion damage: damage to downs that die 
+	for index, target in enumerate(fight_json['targets']):
+		if 'enemyPlayer' in target and target['enemyPlayer'] == True and 'combatReplayData' in target and len(target['combatReplayData']['dead']):
+			targetDeaths = dict(target['combatReplayData']['dead'])
+			targetDowns = dict(target['combatReplayData']['down'])
+			for deathKey, deathValue in targetDeaths.items():
+				for downKey, downValue in targetDowns.items():
+					if deathKey == downValue:
+						dmgEnd = math.ceil(deathKey / 1000)
+						dmgStart = math.ceil(downKey / 1000)
+
+						total_carrion_damage = 0
+						for player in fight_json['players']:
+							DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+							damage_on_target = player["targetDamage1S"][index][0]
+							carrion_damage = damage_on_target[dmgEnd] - damage_on_target[dmgStart]
+
+							DPSStats[DPSStats_prof_name]["Carrion_Damage"] += carrion_damage
+							total_carrion_damage += carrion_damage
+
+							for i in range(dmgStart, dmgEnd):
+								Ch5CaDamage1S[DPSStats_prof_name][i] += damage_on_target[i + 1] - damage_on_target[i]
+
+						for player in fight_json['players']:
+							DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+							DPSStats[DPSStats_prof_name]["Carrion_Damage_Total"] += total_carrion_damage
+
+	# Burst damage: max damage done in n seconds
+	for player in fight_json['players']:
+		DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+		if UsedOffensiveSiege[DPSStats_prof_name]:
+			# Exclude Dragon Banner from Burst stats
+			continue
+
+		player_damage = damagePS[DPSStats_prof_name]
+		for i in range(1, 21):
+			for fight_tick in range(i, fight_ticks):
+				dmg = player_damage[fight_tick] - player_damage[fight_tick - i]
+				DPSStats[DPSStats_prof_name]["Burst_Damage"][i] = max(dmg, DPSStats[DPSStats_prof_name]["Burst_Damage"][i])
+
+	# Ch5Ca Burst damage: max damage done in n seconds
+	for player in fight_json['players']:
+		DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+		if UsedOffensiveSiege[DPSStats_prof_name]:
+			# Exclude Dragon Banner from Burst stats
+			continue
+
+		player_damage_ps = Ch5CaDamage1S[DPSStats_prof_name]
+		player_damage = [0] * len(player_damage_ps)
+		player_damage[0] = player_damage_ps[0]
+		for i in range(1, len(player_damage)):
+			player_damage[i] = player_damage[i - 1] + player_damage_ps[i]
+		for i in range(1, 21):
+			for fight_tick in range(i, fight_ticks):
+				dmg = player_damage[fight_tick] - player_damage[fight_tick - i]
+				DPSStats[DPSStats_prof_name]["Ch5Ca_Burst_Damage"][i] = max(dmg, DPSStats[DPSStats_prof_name]["Ch5Ca_Burst_Damage"][i])
+	
+	
+	return DPSStats
 
 # get stats for this fight from fight_json
 # Input:
@@ -2021,8 +2332,10 @@ def get_stats_from_fight_json(fight_json, config, log):
 		for extension in extensions:
 			if extension['name'] == "Healing Stats":
 				players_running_healing_addon = extension['runningExtension']
+
+	calculate_dps_stats(fight_json, fight)
 		
-	return fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag
+	return fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPSStats
 
 
 
@@ -2522,7 +2835,8 @@ def write_bubble_charts(players, top_players, squad_Control, myDate, input_direc
 
 		bubble_chart_Output.close()
 #	end write bubble charts
-def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, output_file):
+
+def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPSStats, output_file):
 	json_dict = {}
 	json_dict["overall_raid_stats"] = {key: value for key, value in overall_raid_stats.items()}
 	json_dict["overall_squad_stats"] = {key: value for key, value in overall_squad_stats.items()}
@@ -2542,6 +2856,7 @@ def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_
 	json_dict["auras_TableIn"] =  {key: value for key, value in auras_TableIn.items()}
 	json_dict["auras_TableOut"] =  {key: value for key, value in auras_TableOut.items()}
 	json_dict["Death_OnTag"] =  {key: value for key, value in Death_OnTag.items()}
+	json_dict["DPSStats"] =  {key: value for key, value in DPSStats.items()}
 	json_dict["downed_Healing"] =  {key: value for key, value in downed_Healing.items()}
 	
 	
