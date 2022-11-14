@@ -882,8 +882,8 @@ if __name__ == '__main__':
 
 	#start DPS Stats insert
 	max_fightTime = 0
-	for squadDps_prof_name in uptime_Table:
-		max_fightTime = max(uptime_Table[squadDps_prof_name]['duration'], max_fightTime)
+	for squadDps_prof_name in DPSStats:
+		max_fightTime = max(DPSStats[squadDps_prof_name]['duration'], max_fightTime)
 
 	myprint(output, '<$reveal type="match" state="!!curTab" text="DPSStats">')    
 	myprint(output, '\n<<alert-leftbar light "🤖 Experimental DPS stats 🤖" width:60%, class:"font-weight-bold">>\n\n')
