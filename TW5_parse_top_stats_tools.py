@@ -220,33 +220,49 @@ Cele_Food = {
     19451: "Dragon's Revelry Starcake"
     }
 
-def find_sub_type(player):
-	sub_type = ""
+def find_sub_type(player, fightTime):
 	cons_0 = ""
 	cons_1 = ""
-	prof = player['profession']
-	if 'consumables' not in player:
-		sub_type = prof+"_Dps"
-	else:
+	if 'consumables' in player:
 		try: cons_0 = player['consumables'][0]['id']
 		except: cons_0 = ""
 		try: cons_1 = player['consumables'][1]['id']
 		except: cons_1 = ""
 		
-	if cons_0 in Heal_Food:
-		sub_type = prof+"_Heal"
-	if cons_1 in Heal_Utility:
-		sub_type = prof+"_Heal"
+	# If the player has on Cele food, they are always cele, since we wont have enough other
+	# information to determine between the sub types
 	if cons_0 in Cele_Food:
-		sub_type = prof+"_Cele"
-	if player['healing'] > 0:
-		sub_type = prof+"_Heal"
-	if player['concentration'] > 0:
-		sub_type = prof+"_Heal"		
-	if cons_0 not in Heal_Food and cons_0 not in Cele_Food:
-		sub_type = prof+"_Dps"
+		return "Cele"
+		
+	playerDamage = 0
+	playerPowerDamage = 0
+	playerCondiDamage = 0
+	for target in player['dpsTargets']:
+		playerDamage += target[0]['damage']
+		playerPowerDamage += target[0]['powerDamage']
+		playerCondiDamage += target[0]['condiDamage']
 
-	return sub_type
+	# If a player is predominantly condi damage and more than 500 DPS
+	if playerCondiDamage > playerPowerDamage and playerDamage / fightTime > 500:
+		return "Condi"
+
+	# If the player has over 750 DPS for the fight, assume DPS regardless of food / crit
+	if playerDamage / fightTime > 750:
+		return "Dps"
+		
+	if cons_0 in Heal_Food or cons_1 in Heal_Utility:
+		return "Heal"
+
+	criticalCount = sum([stats[0]['criticalRate'] for stats in player['statsTargets']])
+	critableCount = sum([stats[0]['critableDirectDamageCount'] for stats in player['statsTargets']])
+	critPercent = criticalCount / critableCount if critableCount else 0
+
+	# Only healers should have a crit % lower than 40%
+	if critPercent <= 0.4:
+		return "Heal"
+ 
+	# If all other detection fails, fallback to assuming DPS like before
+	return "Dps"
 #end define subtype based on consumables
 
 
@@ -869,18 +885,20 @@ def write_DPSStats_xls(DPSStats, xls_output_filename):
 	sheet1.write(0, 1, "Account")
 	sheet1.write(0, 2, "Name")
 	sheet1.write(0, 3, "Profession")
-	sheet1.write(0, 4, "Attendance")
-	sheet1.write(0, 5, "Damage")
-	sheet1.write(0, 6, "Squad Damage")
-	sheet1.write(0, 7, "Downs")
-	sheet1.write(0, 8, "Kills")
-	sheet1.write(0, 9, "Coordination Damage")
-	sheet1.write(0, 10, "Carrion Damage")
-	sheet1.write(0, 11, "Squad Carrion Damage")
+	sheet1.write(0, 4, "Role")
+	sheet1.write(0, 5, "Attendance")
+	sheet1.write(0, 6, "Combat Time")
+	sheet1.write(0, 7, "Damage")
+	sheet1.write(0, 8, "Squad Damage")
+	sheet1.write(0, 9, "Downs")
+	sheet1.write(0, 10, "Kills")
+	sheet1.write(0, 11, "Coordination Damage")
+	sheet1.write(0, 12, "Carrion Damage")
+	sheet1.write(0, 13, "Squad Carrion Damage")
 	for j in range(1, 21):
-		sheet1.write(0, 11 + j, 'Chunk Damage (' + str(j) + ')')
+		sheet1.write(0, 13 + j, 'Chunk Damage (' + str(j) + ')')
 	for j in range(1, 21):
-		sheet1.write(0, 31 + j, 'Squad Chunk Damage (' + str(j) + ')')
+		sheet1.write(0, 33 + j, 'Squad Chunk Damage (' + str(j) + ')')
 		
 	i = 0
 
@@ -889,18 +907,20 @@ def write_DPSStats_xls(DPSStats, xls_output_filename):
 		sheet1.write(i+1, 1, DPSStats[name]['account'])
 		sheet1.write(i+1, 2, DPSStats[name]['name'])
 		sheet1.write(i+1, 3, DPSStats[name]['profession'])
-		sheet1.write(i+1, 4, DPSStats[name]['duration'])
-		sheet1.write(i+1, 5, DPSStats[name]['Damage_Total'])
-		sheet1.write(i+1, 6, DPSStats[name]['Squad_Damage_Total'])
-		sheet1.write(i+1, 7, DPSStats[name]['Downs'])
-		sheet1.write(i+1, 8, DPSStats[name]['Kills'])
-		sheet1.write(i+1, 9, DPSStats[name]['Coordination_Damage'])
-		sheet1.write(i+1, 10, DPSStats[name]['Carrion_Damage'])
-		sheet1.write(i+1, 11, DPSStats[name]['Carrion_Damage_Total'])
+		sheet1.write(i+1, 4, DPSStats[name]['role'])
+		sheet1.write(i+1, 5, DPSStats[name]['duration'])
+		sheet1.write(i+1, 6, DPSStats[name]['combatTime'])
+		sheet1.write(i+1, 7, DPSStats[name]['Damage_Total'])
+		sheet1.write(i+1, 8, DPSStats[name]['Squad_Damage_Total'])
+		sheet1.write(i+1, 9, DPSStats[name]['Downs'])
+		sheet1.write(i+1, 10, DPSStats[name]['Kills'])
+		sheet1.write(i+1, 11, DPSStats[name]['Coordination_Damage'])
+		sheet1.write(i+1, 12, DPSStats[name]['Carrion_Damage'])
+		sheet1.write(i+1, 13, DPSStats[name]['Carrion_Damage_Total'])
 		for j in range(1, 21):
-			sheet1.write(i+1, 11 + j, DPSStats[name]['Chunk_Damage'][j])
+			sheet1.write(i+1, 13 + j, DPSStats[name]['Chunk_Damage'][j])
 		for j in range(1, 21):
-			sheet1.write(i+1, 31 + j, DPSStats[name]['Chunk_Damage_Total'][j])
+			sheet1.write(i+1, 33 + j, DPSStats[name]['Chunk_Damage_Total'][j])
 		i=i+1
 	
 	# Add BurstDPS sheet
@@ -910,8 +930,9 @@ def write_DPSStats_xls(DPSStats, xls_output_filename):
 	sheet2.write(0, 1, "Account")
 	sheet2.write(0, 2, "Name")
 	sheet2.write(0, 3, "Profession")
+	sheet2.write(0, 4, "Role")
 	for j in range(1, 21):
-		sheet2.write(0, 3 + j, 'Burst Damage (' + str(j) + ')')
+		sheet2.write(0, 4 + j, 'Burst Damage (' + str(j) + ')')
 		
 	i = 0
 
@@ -920,8 +941,9 @@ def write_DPSStats_xls(DPSStats, xls_output_filename):
 		sheet2.write(i+1, 1, DPSStats[name]['account'])
 		sheet2.write(i+1, 2, DPSStats[name]['name'])
 		sheet2.write(i+1, 3, DPSStats[name]['profession'])
+		sheet2.write(i+1, 4, DPSStats[name]['role'])
 		for j in range(1, 21):
-			sheet2.write(i+1, 3 + j, DPSStats[name]['Burst_Damage'][j])
+			sheet2.write(i+1, 4 + j, DPSStats[name]['Burst_Damage'][j])
 		i=i+1
 	
 	# Add Ch5CaBurstDPS sheet
@@ -931,8 +953,9 @@ def write_DPSStats_xls(DPSStats, xls_output_filename):
 	sheet3.write(0, 1, "Account")
 	sheet3.write(0, 2, "Name")
 	sheet3.write(0, 3, "Profession")
+	sheet3.write(0, 4, "Role")
 	for j in range(1, 21):
-		sheet3.write(0, 3 + j, 'Ch5Ca Burst Damage (' + str(j) + ')')
+		sheet3.write(0, 4 + j, 'Ch5Ca Burst Damage (' + str(j) + ')')
 		
 	i = 0
 
@@ -941,8 +964,9 @@ def write_DPSStats_xls(DPSStats, xls_output_filename):
 		sheet3.write(i+1, 1, DPSStats[name]['account'])
 		sheet3.write(i+1, 2, DPSStats[name]['name'])
 		sheet3.write(i+1, 3, DPSStats[name]['profession'])
+		sheet3.write(i+1, 4, DPSStats[name]['role'])
 		for j in range(1, 21):
-			sheet3.write(i+1, 3 + j, DPSStats[name]['Ch5Ca_Burst_Damage'][j])
+			sheet3.write(i+1, 4 + j, DPSStats[name]['Ch5Ca_Burst_Damage'][j])
 		i=i+1
 
 	wb.save(xls_output_filename)
@@ -1887,7 +1911,7 @@ def moving_average(data, window_size):
 
 	return ma
 
-def calculate_dps_stats(fight_json, fight):
+def calculate_dps_stats(fight_json, fight, players_running_healing_addon, config):
 	if fight.skipped:
 		return
 
@@ -1897,20 +1921,41 @@ def calculate_dps_stats(fight_json, fight):
 	for index, target in enumerate(fight_json['targets']):
 		if 'enemyPlayer' in target and target['enemyPlayer'] == True:
 			for player in fight_json['players']:
-				DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']		
-				if DPSStats_prof_name not in damagePS:
-					damagePS[DPSStats_prof_name] = [0] * fight_ticks
+				player_prof_name  = "{{"+player['profession']+"}} "+player['name']		
+				if player_prof_name  not in damagePS:
+					damagePS[player_prof_name ] = [0] * fight_ticks
 
 				damage_on_target = player["targetDamage1S"][index][0]
 				for i in range(fight_ticks):
-					damagePS[DPSStats_prof_name][i] += damage_on_target[i]
+					damagePS[player_prof_name ][i] += damage_on_target[i]
+
+	player_roles = {}
+	player_combat_time = {}
+	skip_fight = {}
+	for player in fight_json['players']:
+		player_prof_name = "{{"+player['profession']+"}} "+player['name']
+		time_in_combat = get_stat_from_player_json(player, players_running_healing_addon, 'time_in_combat', config)
+		if time_in_combat == 0:
+			skip_fight[player_prof_name] = True
+			continue
+
+		player_combat_time[player_prof_name] = time_in_combat
+		player_roles[player_prof_name] = find_sub_type(player, time_in_combat)
+
+		if 'dead' in player['combatReplayData'] and len(player['combatReplayData']['dead']) > 0 and (time_in_combat / fight.duration) < 0.4:
+			skip_fight[player_prof_name] = True
+		else:
+			skip_fight[player_prof_name] = False
 
 	squad_damage_per_tick = []
 	for fight_tick in range(fight_ticks - 1):
 		squad_damage_on_tick = 0
 		for player in fight_json['players']:
-			DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']		
-			player_damage = damagePS[DPSStats_prof_name]
+			player_prof_name = "{{"+player['profession']+"}} "+player['name']
+			if skip_fight[player_prof_name]:
+				continue
+	
+			player_damage = damagePS[player_prof_name]
 			squad_damage_on_tick += player_damage[fight_tick + 1] - player_damage[fight_tick]
 		squad_damage_per_tick.append(squad_damage_on_tick)
 
@@ -1922,13 +1967,20 @@ def calculate_dps_stats(fight_json, fight):
 	UsedOffensiveSiege = {}
 
 	for player in fight_json['players']:
-		DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']		
+		player_prof_name = "{{"+player['profession']+"}} "+player['name']
+		if skip_fight[player_prof_name]:
+			continue
+
+		player_role = player_roles[player_prof_name]
+		DPSStats_prof_name = player_prof_name + " " + player_role	
 		if DPSStats_prof_name not in DPSStats:
 			DPSStats[DPSStats_prof_name] = {}
 			DPSStats[DPSStats_prof_name]["account"] = player['account']
 			DPSStats[DPSStats_prof_name]["name"] = player['name']
 			DPSStats[DPSStats_prof_name]["profession"] = player['profession']
+			DPSStats[DPSStats_prof_name]["role"] = player_role
 			DPSStats[DPSStats_prof_name]["duration"] = 0
+			DPSStats[DPSStats_prof_name]["combatTime"] = 0
 			DPSStats[DPSStats_prof_name]["Coordination_Damage"] = 0
 			DPSStats[DPSStats_prof_name]["Chunk_Damage"] = [0] * 21
 			DPSStats[DPSStats_prof_name]["Chunk_Damage_Total"] = [0] * 21
@@ -1942,12 +1994,13 @@ def calculate_dps_stats(fight_json, fight):
 			DPSStats[DPSStats_prof_name]["Kills"] = 0
 			
 			
-		Ch5CaDamage1S[DPSStats_prof_name] = [0] * fight_ticks
-		UsedOffensiveSiege[DPSStats_prof_name] = False
+		Ch5CaDamage1S[player_prof_name] = [0] * fight_ticks
+		UsedOffensiveSiege[player_prof_name] = False
 			
-		player_damage = damagePS[DPSStats_prof_name]
+		player_damage = damagePS[player_prof_name]
 		
 		DPSStats[DPSStats_prof_name]["duration"] += fight.duration
+		DPSStats[DPSStats_prof_name]["combatTime"] += player_combat_time[player_prof_name]
 		DPSStats[DPSStats_prof_name]["Damage_Total"] += player_damage[fight_ticks - 1]
 		DPSStats[DPSStats_prof_name]["Squad_Damage_Total"] += squad_damage_total
 
@@ -1957,13 +2010,13 @@ def calculate_dps_stats(fight_json, fight):
 
 		for damage_dist in player['totalDamageDist'][0]:
 			if damage_dist['id'] in siege_skill_ids:
-				UsedOffensiveSiege[DPSStats_prof_name] = True
+				UsedOffensiveSiege[player_prof_name] = True
 
 		if "minions" in player:	
 			for minion in player["minions"]:
 				for minion_damage_dist in minion["totalDamageDist"][0]:
 					if minion_damage_dist['id'] in siege_skill_ids:
-						UsedOffensiveSiege[DPSStats_prof_name] = True
+						UsedOffensiveSiege[player_prof_name] = True
 
 		# Coordination_Damage: Damage weighted by coordination with squad
 		player_damage_per_tick = [player_damage[0]]
@@ -1983,7 +2036,7 @@ def calculate_dps_stats(fight_json, fight):
 
 			squad_damage_percent = squad_damage_on_tick / squad_damage_ma_total
 
-			DPSStats[DPSStats_prof_name]["Coordination_Damage"] += player_damage_on_tick * squad_damage_percent * fight_ticks
+			DPSStats[DPSStats_prof_name]["Coordination_Damage"] += player_damage_on_tick * squad_damage_percent * fight.duration
 
 	# Chunk damage: Damage done within X seconds of target down
 	for index, target in enumerate(fight_json['targets']):
@@ -2003,7 +2056,12 @@ def calculate_dps_stats(fight_json, fight):
 
 					squad_damage_on_target = 0
 					for player in fight_json['players']:
-						DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+						player_prof_name = "{{"+player['profession']+"}} "+player['name']	
+						if skip_fight[player_prof_name]:
+							continue
+						
+						player_role = player_roles[player_prof_name]
+						DPSStats_prof_name = player_prof_name + " " + player_role
 
 						damage_on_target = player["targetDamage1S"][index][0]
 						player_damage = damage_on_target[downIndex] - damage_on_target[startIndex]
@@ -2013,10 +2071,15 @@ def calculate_dps_stats(fight_json, fight):
 
 						if chunk_damage_seconds == 5:
 							for i in range(startIndex, downIndex):
-								Ch5CaDamage1S[DPSStats_prof_name][i] += damage_on_target[i + 1] - damage_on_target[i]
+								Ch5CaDamage1S[player_prof_name][i] += damage_on_target[i + 1] - damage_on_target[i]
 
 					for player in fight_json['players']:
-						DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+						player_prof_name = "{{"+player['profession']+"}} "+player['name']
+						if skip_fight[player_prof_name]:
+							continue
+
+						player_role = player_roles[player_prof_name]
+						DPSStats_prof_name = player_prof_name + " " + player_role
 
 						DPSStats[DPSStats_prof_name]["Chunk_Damage_Total"][chunk_damage_seconds] += squad_damage_on_target
 
@@ -2033,7 +2096,12 @@ def calculate_dps_stats(fight_json, fight):
 
 						total_carrion_damage = 0
 						for player in fight_json['players']:
-							DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+							player_prof_name = "{{"+player['profession']+"}} "+player['name']
+							if skip_fight[player_prof_name]:
+								continue
+							
+							player_role = player_roles[player_prof_name]
+							DPSStats_prof_name = player_prof_name + " " + player_role
 							damage_on_target = player["targetDamage1S"][index][0]
 							carrion_damage = damage_on_target[dmgEnd] - damage_on_target[dmgStart]
 
@@ -2041,20 +2109,27 @@ def calculate_dps_stats(fight_json, fight):
 							total_carrion_damage += carrion_damage
 
 							for i in range(dmgStart, dmgEnd):
-								Ch5CaDamage1S[DPSStats_prof_name][i] += damage_on_target[i + 1] - damage_on_target[i]
+								Ch5CaDamage1S[player_prof_name][i] += damage_on_target[i + 1] - damage_on_target[i]
 
 						for player in fight_json['players']:
-							DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
+							player_prof_name = "{{"+player['profession']+"}} "+player['name']
+							if skip_fight[player_prof_name]:
+								continue
+							
+							player_role = player_roles[player_prof_name]
+							DPSStats_prof_name = player_prof_name + " " + player_role
 							DPSStats[DPSStats_prof_name]["Carrion_Damage_Total"] += total_carrion_damage
 
 	# Burst damage: max damage done in n seconds
 	for player in fight_json['players']:
-		DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
-		if UsedOffensiveSiege[DPSStats_prof_name]:
+		player_prof_name = "{{"+player['profession']+"}} "+player['name']
+		if skip_fight[player_prof_name] or UsedOffensiveSiege[player_prof_name]:
 			# Exclude Dragon Banner from Burst stats
 			continue
 
-		player_damage = damagePS[DPSStats_prof_name]
+		player_role = player_roles[player_prof_name]
+		DPSStats_prof_name = player_prof_name + " " + player_role
+		player_damage = damagePS[player_prof_name]
 		for i in range(1, 21):
 			for fight_tick in range(i, fight_ticks):
 				dmg = player_damage[fight_tick] - player_damage[fight_tick - i]
@@ -2062,12 +2137,14 @@ def calculate_dps_stats(fight_json, fight):
 
 	# Ch5Ca Burst damage: max damage done in n seconds
 	for player in fight_json['players']:
-		DPSStats_prof_name = "{{"+player['profession']+"}} "+player['name']
-		if UsedOffensiveSiege[DPSStats_prof_name]:
+		player_prof_name = "{{"+player['profession']+"}} "+player['name']
+		if skip_fight[player_prof_name] or UsedOffensiveSiege[player_prof_name]:
 			# Exclude Dragon Banner from Burst stats
 			continue
 
-		player_damage_ps = Ch5CaDamage1S[DPSStats_prof_name]
+		player_role = player_roles[player_prof_name]
+		DPSStats_prof_name = player_prof_name + " " + player_role
+		player_damage_ps = Ch5CaDamage1S[player_prof_name]
 		player_damage = [0] * len(player_damage_ps)
 		player_damage[0] = player_damage_ps[0]
 		for i in range(1, len(player_damage)):
@@ -2408,7 +2485,7 @@ def get_stats_from_fight_json(fight_json, config, log):
 		playerDamage = 0
 		name = player['name']
 		acct = player['account']
-		sub_type = find_sub_type(player)
+		sub_type = player['profession'] + "_" + find_sub_type(player, durationMS / 1000)
 		prof = sub_type
 		prof_name = sub_type+"\n"+name
 		for target in player['dpsTargets']:
@@ -2476,7 +2553,7 @@ def get_stats_from_fight_json(fight_json, config, log):
 			if extension['name'] == "Healing Stats":
 				players_running_healing_addon = extension['runningExtension']
 
-	calculate_dps_stats(fight_json, fight)
+	calculate_dps_stats(fight_json, fight, players_running_healing_addon, config)
 		
 	return fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats
 
