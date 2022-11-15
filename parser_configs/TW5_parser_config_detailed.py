@@ -49,8 +49,11 @@ min_fight_duration = 30
 # minimum number of enemies to consider a fight in the stats
 min_enemy_players = 10
 
+# Max logs before reducing sections in report
+max_logs_before_condense = 100
+
 # Produce Charts for stats_to_compute
-charts = True
+charts = False
 
 # names as which each specialization will show up in the stats
 profession_abbreviations = {}

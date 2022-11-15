@@ -100,8 +100,8 @@ class Fight:
 	squad_skill_dmg: dict = field(default_factory=dict) #squad skill_name and amount of damage output
 	squad_spike_dmg: dict = field(default_factory=dict) #squad skill_name and amount of damage output
 
-	
-	
+   
+   
 # This class stores the configuration for running the top stats.
 @dataclass
 class Config:
@@ -273,7 +273,7 @@ def find_sub_type(player, fightTime):
 
 # prints output_string to the console and the output_file, with a linebreak at the end
 def myprint(output_file, output_string):
-	print(output_string)
+	# print(output_string)
 	output_file.write(output_string+"\n")
 
 
@@ -330,6 +330,8 @@ def fill_config(config_input):
 
 	config.condition_ids = {720: 'Blinded', 721: 'Crippled', 722: 'Chilled', 727: 'Immobile', 742: 'Weakness', 791: 'Fear', 833: 'Daze', 872: 'Stun', 26766: 'Slow', 27705: 'Taunt', 30778: "Hunter's Mark"}
 	config.auras_ids = {5677: 'Fire', 5577: 'Shocking', 5579: 'Frost', 5684: 'Magnetic'}
+
+	config.max_logs_before_condense = config_input.max_logs_before_condense
 
 	config.charts = config_input.charts
 			
@@ -1637,7 +1639,7 @@ def collect_stat_data(args, config, log, anonymize=False):
 			# if this combination of charname + profession is not in the player index yet, create a new entry
 			name_and_prof = name+" "+profession
 			if name_and_prof not in player_index.keys():
-				print("creating new player",name_and_prof)
+				# print("creating new player",name_and_prof)
 				create_new_player = True
 
 			# if this account is not in the account index yet, create a new entry
@@ -1688,7 +1690,7 @@ def collect_stat_data(args, config, log, anonymize=False):
 						player.stats_per_fight[fight_number]['time_in_combat'] = 1
 					player.stats_per_fight[fight_number][stat] = player.stats_per_fight[fight_number][stat]/player.stats_per_fight[fight_number]['time_in_combat']
 
-				print(stat)
+				# print(stat)
 				# add stats of this fight and player to total stats of this fight and player
 				if player.stats_per_fight[fight_number][stat] > 0:
 					# buff are generation squad values, using total over time

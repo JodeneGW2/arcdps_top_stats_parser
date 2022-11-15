@@ -103,10 +103,18 @@ if __name__ == '__main__':
 	overall_raid_stats = get_overall_raid_stats(fights)
 	total_fight_duration = print_total_squad_stats(fights, overall_squad_stats, overall_raid_stats, found_healing, found_barrier, config, output)
 
+	large_items = [
+		'<$button set="!!curTab" setTo="Squad Composition" selectedClass="" class="btn btn-sm btn-dark" style=""> Squad Composition </$button>',
+		'<$button set="!!curTab" setTo="Fight Review" selectedClass="" class="btn btn-sm btn-dark" style=""> Fight Review </$button>'
+	] if overall_raid_stats['num_used_fights'] < config.max_logs_before_condense else []
+
+	support_item = [
+		'<$button set="!!curTab" setTo="Support" selectedClass="" class="btn btn-sm btn-dark" style=""> Support Players </$button>'
+	] if overall_raid_stats['num_used_fights'] < config.max_logs_before_condense else []
+
 	#Start nav_bar_menu for TW5
 	Nav_Bar_Items= ('<$button set="!!curTab" setTo="Overview" selectedClass="" class="btn btn-sm btn-dark" style=""> Session Overview </$button>',
-					'<$button set="!!curTab" setTo="Squad Composition" selectedClass="" class="btn btn-sm btn-dark" style=""> Squad Composition </$button>',
-					'<$button set="!!curTab" setTo="Fight Review" selectedClass="" class="btn btn-sm btn-dark" style=""> Fight Review </$button>',
+					*large_items,
 					'<$button set="!!curTab" setTo="Deaths" selectedClass="" class="btn btn-sm btn-dark" style=""> Deaths </$button>',
 					'<$button set="!!curTab" setTo="Illusion of Life" selectedClass="" class="btn btn-sm btn-dark" style=""> IOL </$button>',
 					'<$button set="!!curTab" setTo="Resurrect" selectedClass="" class="btn btn-sm btn-dark" style=""> Resurrect </$button>',                    
@@ -134,7 +142,7 @@ if __name__ == '__main__':
 					'<$button set="!!curTab" setTo="Alacrity" selectedClass="" class="btn btn-sm btn-dark" style=""> Alacrity </$button>',
 					'<$button set="!!curTab" setTo="Vigor" selectedClass="" class="btn btn-sm btn-dark" style=""> Vigor </$button>',
 					'<$button set="!!curTab" setTo="Regeneration" selectedClass="" class="btn btn-sm btn-dark" style=""> Regeneration </$button>',
-					'<$button set="!!curTab" setTo="Support" selectedClass="" class="btn btn-sm btn-dark" style=""> Support Players </$button>',
+					*support_item,
 					'<$button set="!!curTab" setTo="Healing" selectedClass="" class="btn btn-sm btn-dark" style=""> Healing </$button>',
 					'<$button set="!!curTab" setTo="Barrier" selectedClass="" class="btn btn-sm btn-dark" style=""> Barrier </$button>',
 					'<$button set="!!curTab" setTo="Barrier Damage" selectedClass="" class="btn btn-sm btn-dark" style=""> Barrier Damage </$button>',					
@@ -204,132 +212,134 @@ if __name__ == '__main__':
 	# end Squad Spike Damage
 
 	#Squad Composition Testing
-	myprint(output, '<$reveal type="match" state="!!curTab" text="Squad Composition">')    
-	myprint(output, '\n<<alert dark "Excludes skipped fights in the overview" width:60%>>\n')
-	myprint(output, '\n<div class="flex-row">\n    <div class="flex-col border">\n')
-	myprint(output, '\n!!!SQUAD COMPOSITION\n')    
-	sort_order = ['Firebrand', 'Scrapper', 'Spellbreaker', "Herald", "Chronomancer", "Reaper", "Scourge", "Dragonhunter", "Guardian", "Elementalist", "Tempest", "Revenant", "Weaver", "Willbender", "Renegade", "Vindicator", "Warrior", "Berserker", "Bladesworn", "Engineer", "Holosmith", "Mechanist", "Ranger", "Druid", "Soulbeast", "Untamed", "Thief", "Daredevil", "Deadeye", "Specter", "Catalyst", "Mesmer", "Mirage", "Virtuoso", "Necromancer", "Harbinger"]
+	if overall_raid_stats['num_used_fights'] < config.max_logs_before_condense:
+		myprint(output, '<$reveal type="match" state="!!curTab" text="Squad Composition">')    
+		myprint(output, '\n<<alert dark "Excludes skipped fights in the overview" width:60%>>\n')
+		myprint(output, '\n<div class="flex-row">\n    <div class="flex-col border">\n')
+		myprint(output, '\n!!!SQUAD COMPOSITION\n')    
+		sort_order = ['Firebrand', 'Scrapper', 'Spellbreaker', "Herald", "Chronomancer", "Reaper", "Scourge", "Dragonhunter", "Guardian", "Elementalist", "Tempest", "Revenant", "Weaver", "Willbender", "Renegade", "Vindicator", "Warrior", "Berserker", "Bladesworn", "Engineer", "Holosmith", "Mechanist", "Ranger", "Druid", "Soulbeast", "Untamed", "Thief", "Daredevil", "Deadeye", "Specter", "Catalyst", "Mesmer", "Mirage", "Virtuoso", "Necromancer", "Harbinger"]
 
-	output_string = ""
+		output_string = ""
 
-	for fight in squad_comp:
-		output_string1 = "\n|thead-dark|k\n"
-		output_string2 = ""
-		output_string1 += "|Fight |"
-		output_string2 += "|"+str(fight+1)
-		for prof in sort_order:
-			if prof in squad_comp[fight]:
-				output_string1 += " {{"+str(prof)+"}} |"
-				output_string2 += " | "+str(squad_comp[fight][prof])
-				
-		output_string1 += "h"
-		output_string2 += " |\n"
-		
-		myprint(output, output_string1)
-		myprint(output, output_string2)
-	myprint(output, '\n</div>\n    <div class="flex-col border">\n')
-	myprint(output, '\n!!!ENEMY COMPOSITION\n')    
-	enemy_squad_num = 0
-	for fight in fights:
-		if fight.skipped:
+		for fight in squad_comp:
+			output_string1 = "\n|thead-dark|k\n"
+			output_string2 = ""
+			output_string1 += "|Fight |"
+			output_string2 += "|"+str(fight+1)
+			for prof in sort_order:
+				if prof in squad_comp[fight]:
+					output_string1 += " {{"+str(prof)+"}} |"
+					output_string2 += " | "+str(squad_comp[fight][prof])
+					
+			output_string1 += "h"
+			output_string2 += " |\n"
+			
+			myprint(output, output_string1)
+			myprint(output, output_string2)
+		myprint(output, '\n</div>\n    <div class="flex-col border">\n')
+		myprint(output, '\n!!!ENEMY COMPOSITION\n')    
+		enemy_squad_num = 0
+		for fight in fights:
+			if fight.skipped:
+				enemy_squad_num += 1
+				continue
 			enemy_squad_num += 1
-			continue
-		enemy_squad_num += 1
-		output_string1 = "\n|thead-dark|k\n"
-		output_string2 = ""
-		output_string1 += "|Fight |"
-		output_string2 += "|"+str(enemy_squad_num)
-		for prof in sort_order:
-			if prof in fight.enemy_squad:
-				output_string1 += " {{"+str(prof)+"}} |"
-				output_string2 += " | "+str(fight.enemy_squad[prof])
+			output_string1 = "\n|thead-dark|k\n"
+			output_string2 = ""
+			output_string1 += "|Fight |"
+			output_string2 += "|"+str(enemy_squad_num)
+			for prof in sort_order:
+				if prof in fight.enemy_squad:
+					output_string1 += " {{"+str(prof)+"}} |"
+					output_string2 += " | "+str(fight.enemy_squad[prof])
 
-		output_string1 += "h"
-		output_string2 += " |\n"
+			output_string1 += "h"
+			output_string2 += " |\n"
 
-		myprint(output, output_string1)
-		myprint(output, output_string2)
-	myprint(output, '\n</div>\n</div>\n')
-	#end reveal
-	print_string = "\n</$reveal>\n"
-	myprint(output, print_string)     
+			myprint(output, output_string1)
+			myprint(output, output_string2)
+		myprint(output, '\n</div>\n</div>\n')
+		#end reveal
+		print_string = "\n</$reveal>\n"
+		myprint(output, print_string)     
 
 
 	# end Squad Composition insert
 
 	#start Fight DPS Review insert
-	myprint(output, '<$reveal type="match" state="!!curTab" text="Fight Review">')    
-	myprint(output, '\n<<alert dark "Excludes skipped fights in the overview" width:60%>>\n')
-	myprint(output, '\n!!!Damage Output Review by Fight-#\n\n')
-	FightNum=0
-	for fight in fights:
-		FightNum = FightNum+1
-		if not fight.skipped:
-			myprint(output, '<$button set="!!curFight" setTo="Fight-'+str(FightNum)+'" selectedClass="" class="btn btn-sm btn-dark" style=""> Fight-'+str(FightNum)+' </$button>')
-	
-	myprint(output, '\n---\n')
-	
-	FightNum = 0
-	for fight in fights:
-		FightNum = FightNum+1
-		if not fight.skipped:
-			myprint(output, '<$reveal type="match" state="!!curFight" text="Fight-'+str(FightNum)+'">')
-			myprint(output, '\n<div class="flex-row">\n    <div class="flex-col">\n')
-			#begin fight summary
-			myprint(output, "|thead-dark table-hover sortable|k")
-			myprint(output, "|Fight Summary:|<|h")
-			myprint(output, '|Squad Members: |'+str(fight.allies)+' |')
-			myprint(output, '|Squad Deaths: |'+str(fight.total_stats['deaths'])+' |')
-			myprint(output, '|Enemies: |'+str(fight.enemies)+' |')
-			myprint(output, '|Enemies Downed: |'+str(fight.downs)+' |')
-			myprint(output, '|Enemies Killed: |'+str(fight.kills)+' |')
-			myprint(output, '|Fight Duration: |'+str(fight.duration)+' |')
-			myprint(output, '|Fight End Time: |'+str(fight.end_time)+' |')
-			myprint(output, '</div></div>\n\n')
-			#end fight Summary
-			myprint(output, '\n<div class="flex-row">\n    <div class="flex-col-1">\n')
-			myprint(output, "|table-caption-top|k")
-			myprint(output, "|Damage by Squad Player Descending|c")
-			myprint(output, "|thead-dark table-hover|k")
-			myprint(output, "|!Squad Member | !Damage Output|h")
-			#begin squad DPS totals
-			sorted_squad_Dps = dict(sorted(fight.squad_Dps.items(), key=lambda x: x[1], reverse=True))
-			for name in sorted_squad_Dps:
-				myprint(output, '|'+name+'|'+my_value(sorted_squad_Dps[name])+'|')
-			#end Squad DPS totals
-			myprint(output, '\n</div>\n    <div class="flex-col-1">\n')
-			myprint(output, "|table-caption-top|k")
-			myprint(output, "|Damage by Squad Skill Descending|c")
-			myprint(output, "|thead-dark table-hover|k")
-			myprint(output, "|!Squad Skill Name | !Damage Output|h")
-			#start   Squad Skill Damage totals
-			sorted_squad_skill_dmg = dict(sorted(fight.squad_skill_dmg.items(), key=lambda x: x[1], reverse=True))
-			for name in sorted_squad_skill_dmg:
-				myprint(output, '|'+name+'|'+my_value(sorted_squad_skill_dmg[name])+'|')
-			#end Squad Skill Damage totals
-			myprint(output, '\n</div>\n    <div class="flex-col-1">\n')
-			myprint(output, "|table-caption-top|k")
-			myprint(output, "|Damage by Enemy Player Descending|c")            
-			myprint(output, "|thead-secondary table-hover|k")
-			myprint(output, "|!Enemy Player | !Damage Output|h")
-			#begin Enemy DPS totals
-			sorted_enemy_Dps = dict(sorted(fight.enemy_Dps.items(), key=lambda x: x[1], reverse=True))
-			for name in sorted_enemy_Dps:
-				myprint(output, '|'+name+'|'+my_value(sorted_enemy_Dps[name])+'|')
-			#end Enemy DPS totals
-			myprint(output, '\n</div>\n    <div class="flex-col-1">\n')
-			myprint(output, "|table-caption-top|k")
-			myprint(output, "|Damage by Enemy Skill Descending|c")            
-			myprint(output, "|thead-secondary table-hover|k")
-			myprint(output, "|!Enemy Skill | !Damage Output|h")
-			#begin Enemy Skill Damage       
-			sorted_enemy_skill_dmg = dict(sorted(fight.enemy_skill_dmg.items(), key=lambda x: x[1], reverse=True))
-			for name in sorted_enemy_skill_dmg:
-				myprint(output, '|'+name+'|'+my_value(sorted_enemy_skill_dmg[name])+'|')
-			#end Enemy Skill Damage
-			myprint(output, '\n</div>\n</div>\n')
-			myprint(output, "</$reveal>\n")
-	myprint(output, "</$reveal>\n")
+	if overall_raid_stats['num_used_fights'] < config.max_logs_before_condense:
+		myprint(output, '<$reveal type="match" state="!!curTab" text="Fight Review">')    
+		myprint(output, '\n<<alert dark "Excludes skipped fights in the overview" width:60%>>\n')
+		myprint(output, '\n!!!Damage Output Review by Fight-#\n\n')
+		FightNum=0
+		for fight in fights:
+			FightNum = FightNum+1
+			if not fight.skipped:
+				myprint(output, '<$button set="!!curFight" setTo="Fight-'+str(FightNum)+'" selectedClass="" class="btn btn-sm btn-dark" style=""> Fight-'+str(FightNum)+' </$button>')
+		
+		myprint(output, '\n---\n')
+		
+		FightNum = 0
+		for fight in fights:
+			FightNum = FightNum+1
+			if not fight.skipped:
+				myprint(output, '<$reveal type="match" state="!!curFight" text="Fight-'+str(FightNum)+'">')
+				myprint(output, '\n<div class="flex-row">\n    <div class="flex-col">\n')
+				#begin fight summary
+				myprint(output, "|thead-dark table-hover sortable|k")
+				myprint(output, "|Fight Summary:|<|h")
+				myprint(output, '|Squad Members: |'+str(fight.allies)+' |')
+				myprint(output, '|Squad Deaths: |'+str(fight.total_stats['deaths'])+' |')
+				myprint(output, '|Enemies: |'+str(fight.enemies)+' |')
+				myprint(output, '|Enemies Downed: |'+str(fight.downs)+' |')
+				myprint(output, '|Enemies Killed: |'+str(fight.kills)+' |')
+				myprint(output, '|Fight Duration: |'+str(fight.duration)+' |')
+				myprint(output, '|Fight End Time: |'+str(fight.end_time)+' |')
+				myprint(output, '</div></div>\n\n')
+				#end fight Summary
+				myprint(output, '\n<div class="flex-row">\n    <div class="flex-col-1">\n')
+				myprint(output, "|table-caption-top|k")
+				myprint(output, "|Damage by Squad Player Descending|c")
+				myprint(output, "|thead-dark table-hover|k")
+				myprint(output, "|!Squad Member | !Damage Output|h")
+				#begin squad DPS totals
+				sorted_squad_Dps = dict(sorted(fight.squad_Dps.items(), key=lambda x: x[1], reverse=True))
+				for name in sorted_squad_Dps:
+					myprint(output, '|'+name+'|'+my_value(sorted_squad_Dps[name])+'|')
+				#end Squad DPS totals
+				myprint(output, '\n</div>\n    <div class="flex-col-1">\n')
+				myprint(output, "|table-caption-top|k")
+				myprint(output, "|Damage by Squad Skill Descending|c")
+				myprint(output, "|thead-dark table-hover|k")
+				myprint(output, "|!Squad Skill Name | !Damage Output|h")
+				#start   Squad Skill Damage totals
+				sorted_squad_skill_dmg = dict(sorted(fight.squad_skill_dmg.items(), key=lambda x: x[1], reverse=True))
+				for name in sorted_squad_skill_dmg:
+					myprint(output, '|'+name+'|'+my_value(sorted_squad_skill_dmg[name])+'|')
+				#end Squad Skill Damage totals
+				myprint(output, '\n</div>\n    <div class="flex-col-1">\n')
+				myprint(output, "|table-caption-top|k")
+				myprint(output, "|Damage by Enemy Player Descending|c")            
+				myprint(output, "|thead-secondary table-hover|k")
+				myprint(output, "|!Enemy Player | !Damage Output|h")
+				#begin Enemy DPS totals
+				sorted_enemy_Dps = dict(sorted(fight.enemy_Dps.items(), key=lambda x: x[1], reverse=True))
+				for name in sorted_enemy_Dps:
+					myprint(output, '|'+name+'|'+my_value(sorted_enemy_Dps[name])+'|')
+				#end Enemy DPS totals
+				myprint(output, '\n</div>\n    <div class="flex-col-1">\n')
+				myprint(output, "|table-caption-top|k")
+				myprint(output, "|Damage by Enemy Skill Descending|c")            
+				myprint(output, "|thead-secondary table-hover|k")
+				myprint(output, "|!Enemy Skill | !Damage Output|h")
+				#begin Enemy Skill Damage       
+				sorted_enemy_skill_dmg = dict(sorted(fight.enemy_skill_dmg.items(), key=lambda x: x[1], reverse=True))
+				for name in sorted_enemy_skill_dmg:
+					myprint(output, '|'+name+'|'+my_value(sorted_enemy_skill_dmg[name])+'|')
+				#end Enemy Skill Damage
+				myprint(output, '\n</div>\n</div>\n')
+				myprint(output, "</$reveal>\n")
+		myprint(output, "</$reveal>\n")
 
 	#end Fight DPS Review insert
 
@@ -389,22 +399,24 @@ if __name__ == '__main__':
 		#JEL-Tweaked to output TW5 output to maintain formatted table and slider (https://drevarr.github.io/FluxCapacity.html)
 		myprint(output, "</$reveal>\n")
 
-		write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, stacking_uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats, args.json_output_filename)
+		if overall_raid_stats['num_used_fights'] < config.max_logs_before_condense:
+			write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, stacking_uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats, args.json_output_filename)
 
-	#print table of accounts that fielded support characters
-	myprint(output,'<$reveal type="match" state="!!curTab" text="Support">')
-	myprint(output, "\n")
-	# print table header
-	print_string = "|thead-dark table-hover sortable|k"    
-	myprint(output, print_string)
-	print_string = "|!Account |!Name |!Profession | !Fights| !Duration|!Support |!Guild Status |h"
-	myprint(output, print_string)    
+	if overall_raid_stats['num_used_fights'] < config.max_logs_before_condense:
+		#print table of accounts that fielded support characters
+		myprint(output,'<$reveal type="match" state="!!curTab" text="Support">')
+		myprint(output, "\n")
+		# print table header
+		print_string = "|thead-dark table-hover sortable|k"    
+		myprint(output, print_string)
+		print_string = "|!Account |!Name |!Profession | !Fights| !Duration|!Support |!Guild Status |h"
+		myprint(output, print_string)    
 
-	for stat in config.stats_to_compute:
-		if (stat == 'rips' or stat == 'cleanses' or stat == 'stability'):
-			write_support_players(players, top_total_stat_players[stat], stat, output)
+		for stat in config.stats_to_compute:
+			if (stat == 'rips' or stat == 'cleanses' or stat == 'stability'):
+				write_support_players(players, top_total_stat_players[stat], stat, output)
 
-	myprint(output, "</$reveal>\n")
+		myprint(output, "</$reveal>\n")
 
 	supportCount=0
 
@@ -1019,7 +1031,7 @@ if __name__ == '__main__':
 		fightTime = DPSStats[DPSStats_prof_name]['duration']
 		combatTime = DPSStats[DPSStats_prof_name]["combatTime"]
 
-		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 20 < max_fightTime:
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '+my_value(fightTime)
@@ -1084,7 +1096,7 @@ if __name__ == '__main__':
 		prof = DPSStats[DPSStats_prof_name]['profession']
 		fightTime = DPSStats[DPSStats_prof_name]['duration']
 
-		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 20 < max_fightTime:
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '
@@ -1115,7 +1127,7 @@ if __name__ == '__main__':
 		prof = DPSStats[DPSStats_prof_name]['profession']
 		fightTime = DPSStats[DPSStats_prof_name]['duration']
 
-		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 20 < max_fightTime:
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '
@@ -1149,7 +1161,7 @@ if __name__ == '__main__':
 		prof = DPSStats[DPSStats_prof_name]['profession']
 		fightTime = DPSStats[DPSStats_prof_name]['duration']
 
-		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 20 < max_fightTime:
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '
@@ -1180,7 +1192,7 @@ if __name__ == '__main__':
 		prof = DPSStats[DPSStats_prof_name]['profession']
 		fightTime = DPSStats[DPSStats_prof_name]['duration']
 
-		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 10 < max_fightTime:
+		if DPSStats[DPSStats_prof_name]['Damage_Total'] / fightTime < 500 or fightTime * 20 < max_fightTime:
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '
@@ -1224,6 +1236,7 @@ if __name__ == '__main__':
 				supportCount = write_support_xls(players, top_total_stat_players[stat], stat, args.xls_output_filename, supportCount)
 
 	#write out Bubble Charts and Box_Plots
-	write_bubble_charts(players, top_total_stat_players[stat], squad_Control, myDate, args.input_directory)
-	write_box_plot_charts(DPS_List, myDate, args.input_directory)
-	write_DPSStats_bubble_charts(uptime_Table, DPSStats, myDate, args.input_directory)
+	if config.charts:
+		write_box_plot_charts(DPS_List, myDate, args.input_directory)
+		write_bubble_charts(players, top_total_stat_players[stat], squad_Control, myDate, args.input_directory)
+		write_DPSStats_bubble_charts(uptime_Table, DPSStats, myDate, args.input_directory)
