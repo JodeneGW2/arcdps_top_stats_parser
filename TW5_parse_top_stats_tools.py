@@ -1750,7 +1750,7 @@ def get_stat_from_player_json(player_json, players_running_healing_addon, stat, 
 			return 0
 		sumDamage = 0
 		for target in player_json['dpsTargets']:
-			sumDamage = sumDamage + int(target[0]['condiDps'])
+			sumDamage = sumDamage + int(target[0]['condiDamage'])
 		return int(sumDamage)
 		#return int(player_json['dpsAll'][0]['condiDamage'])    
 	
