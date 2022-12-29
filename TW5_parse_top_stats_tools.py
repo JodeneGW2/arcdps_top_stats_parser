@@ -160,6 +160,9 @@ uptime_Table = {}
 uptime_Buff_Ids = {1122: 'stability', 717: 'protection', 743: 'aegis', 740: 'might', 725: 'fury', 26980: 'resistance', 873: 'resolution', 1187: 'quickness', 719: 'swiftness', 30328: 'alacrity', 726: 'vigor', 718: 'regeneration'}
 #uptime_Buff_Names = { 'stability': 1122,  'protection': 717,  'aegis': 743,  'might': 740,  'fury': 725,  'resistance': 26980,  'resolution': 873,  'quickness': 1187,  'swiftness': 719,  'alacrity': 30328,  'vigor': 726,  'regeneration': 718}
 
+#Stacking Buffs Tracking
+stacking_uptime_Table = {}
+
 #Calculate On Tag Death Variables
 On_Tag = 600
 Run_Back = 5000
@@ -1153,6 +1156,69 @@ def write_buff_uptimes_in_xls(uptime_Table, players, uptime_Order, xls_output_fi
 		i=i+1
 	wb.save(xls_output_filename)
 
+def write_stacking_buff_uptimes_in_xls(uptimeTable, xls_output_filename):
+	fileDate = datetime.datetime.now()
+	book = xlrd.open_workbook(xls_output_filename)
+	wb = copy(book)
+
+	# Add Might Stack sheet
+	sheet1 = wb.add_sheet("Might Stack Uptime")
+	
+	sheet1.write(0, 0, "Date")
+	sheet1.write(0, 1, "Account")
+	sheet1.write(0, 2, "Name")
+	sheet1.write(0, 3, "Profession")
+	sheet1.write(0, 4, "Role")
+	sheet1.write(0, 5, "Attendance")
+	for j in range(0, 26):
+		sheet1.write(0, 6 + j, 'Might (' + str(j) + ')')
+		
+	i = 0
+
+	for name in uptimeTable:
+		if 'might' not in uptimeTable[name]:
+			continue
+
+		sheet1.write(i+1, 0, fileDate.strftime("%Y-%m-%d"))
+		sheet1.write(i+1, 1, uptimeTable[name]['account'])
+		sheet1.write(i+1, 2, uptimeTable[name]['name'])
+		sheet1.write(i+1, 3, uptimeTable[name]['profession'])
+		sheet1.write(i+1, 4, uptimeTable[name]['role'])
+		sheet1.write(i+1, 5, uptimeTable[name]['duration_might'])
+		for j in range(0, 26):
+			sheet1.write(i+1, 6 + j, uptimeTable[name]['might'][j])
+		i=i+1
+
+	# Add Stability Stack sheet
+	sheet2 = wb.add_sheet("Stability Stack Uptime")
+	
+	sheet2.write(0, 0, "Date")
+	sheet2.write(0, 1, "Account")
+	sheet2.write(0, 2, "Name")
+	sheet2.write(0, 3, "Profession")
+	sheet2.write(0, 4, "Role")
+	sheet2.write(0, 5, "Attendance")
+	for j in range(0, 26):
+		sheet2.write(0, 6 + j, 'Stability (' + str(j) + ')')
+		
+	i = 0
+
+	for name in uptimeTable:
+		if 'stability' not in uptimeTable[name]:
+			continue
+
+		sheet2.write(i+1, 0, fileDate.strftime("%Y-%m-%d"))
+		sheet2.write(i+1, 1, uptimeTable[name]['account'])
+		sheet2.write(i+1, 2, uptimeTable[name]['name'])
+		sheet2.write(i+1, 3, uptimeTable[name]['profession'])
+		sheet2.write(i+1, 4, uptimeTable[name]['role'])
+		sheet2.write(i+1, 5, uptimeTable[name]['duration_stability'])
+		for j in range(0, 26):
+			sheet2.write(i+1, 6 + j, uptimeTable[name]['stability'][j])
+		i=i+1
+
+	wb.save(xls_output_filename)
+
 def write_support_xls(players, top_players, stat, xls_output_filename, supportCount):
 	fileDate = datetime.datetime.now()
 	book = xlrd.open_workbook(xls_output_filename)
@@ -1490,7 +1556,7 @@ def collect_stat_data(args, config, log, anonymize=False):
 		json_datafile = open(file_path, encoding='utf-8')
 		json_data = json.load(json_datafile)
 		# get fight stats
-		fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats = get_stats_from_fight_json(json_data, config, log)
+		fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, stacking_uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats = get_stats_from_fight_json(json_data, config, log)
 			
 		if first:
 			first = False
@@ -1666,7 +1732,7 @@ def collect_stat_data(args, config, log, anonymize=False):
 	if anonymize:
 		anonymize_players(players, account_index)
 	
-	return players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats
+	return players, fights, found_healing, found_barrier, squad_comp, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, stacking_uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats
 			
 
 
@@ -1918,6 +1984,57 @@ def moving_average(data, window_size):
 
 	return ma
 
+# States array is formatted: [start, stack_count]
+# Reformat as: [start, end, stack_count]
+def split_boon_states(states, duration):
+	split_states = []
+	num_states = len(states) - 1
+	for index, [start, stacks] in enumerate(states):
+		if index == num_states:
+			if start < duration:
+				split_states.append([start, duration, stacks])
+		else:
+			split_states.append([start, min(states[index + 1][0], duration), stacks])
+	return split_states
+
+# Take state array and combat breakpoints, filter down states to only include those when in combat
+def split_boon_states_by_combat_breakpoints(states, breakpoints, duration):
+	if not breakpoints:
+		return []
+
+	breakpoints_copy = breakpoints[:]
+	split_states = split_boon_states(states, duration)
+	new_states = []
+
+	while(len(breakpoints_copy) > 0 and len(split_states) > 0):
+		[combat_start, combat_end] = breakpoints_copy.pop(0)
+		[start_state, end_state, stacks] = split_states.pop(0)
+
+		while(end_state < combat_start):
+			if len(split_states) == 0:
+				break
+			[start_state, end_state, stacks] = split_states.pop(0)
+
+		if end_state < combat_start:
+			break
+
+		new_states.append([
+			combat_start if combat_start > start_state else start_state,
+			combat_end if combat_end < end_state else end_state,
+			stacks
+		])
+
+		while(len(split_states) > 0 and split_states[0][1] <= combat_end):
+			[start_state, end_state, stacks] = split_states.pop(0)
+
+			new_states.append([
+				combat_start if combat_start > start_state else start_state,
+				combat_end if combat_end < end_state else end_state,
+				stacks
+			])
+
+	return new_states
+
 def calculate_dps_stats(fight_json, fight, players_running_healing_addon, config):
 	if fight.skipped:
 		return
@@ -2161,6 +2278,43 @@ def calculate_dps_stats(fight_json, fight, players_running_healing_addon, config
 				dmg = player_damage[fight_tick] - player_damage[fight_tick - i]
 				DPSStats[DPSStats_prof_name]["Ch5Ca_Burst_Damage"][i] = max(dmg, DPSStats[DPSStats_prof_name]["Ch5Ca_Burst_Damage"][i])
 	
+	# Track Stacking Buff Uptimes
+	for player in fight_json['players']:
+		player_prof_name = "{{"+player['profession']+"}} "+player['name']
+		if skip_fight[player_prof_name]:
+			continue
+
+		player_role = player_roles[player_prof_name]
+		DPSStats_prof_name = player_prof_name + " " + player_role
+		if DPSStats_prof_name not in stacking_uptime_Table:
+			stacking_uptime_Table[DPSStats_prof_name] = {}
+			stacking_uptime_Table[DPSStats_prof_name]["account"] = player['account']
+			stacking_uptime_Table[DPSStats_prof_name]["name"] = player['name']
+			stacking_uptime_Table[DPSStats_prof_name]["profession"] = player['profession']
+			stacking_uptime_Table[DPSStats_prof_name]["role"] = player_role
+			stacking_uptime_Table[DPSStats_prof_name]["duration_might"] = 0
+			stacking_uptime_Table[DPSStats_prof_name]["duration_stability"] = 0
+			stacking_uptime_Table[DPSStats_prof_name]["might"] = [0] * 26
+			stacking_uptime_Table[DPSStats_prof_name]["stability"] = [0] * 26
+
+		player_combat_breakpoints = get_combat_time_breakpoints(player)
+
+		for item in player['buffUptimesActive']:
+			buffId = int(item['id'])	
+			if buffId not in uptime_Buff_Ids:
+				continue
+
+			buff_name = uptime_Buff_Ids[buffId]
+			if buff_name == 'stability' or buff_name == 'might':
+				states = split_boon_states_by_combat_breakpoints(item['states'], player_combat_breakpoints, fight.duration*1000)
+
+				total_time = 0
+				for [state_start, state_end, stacks] in states:
+					uptime = state_end - state_start
+					total_time += uptime
+					stacking_uptime_Table[DPSStats_prof_name][buff_name][min(stacks, 25)] += uptime
+
+				stacking_uptime_Table[DPSStats_prof_name]["duration_"+buff_name] += total_time
 	
 	return DPSStats
 
@@ -2562,7 +2716,7 @@ def get_stats_from_fight_json(fight_json, config, log):
 
 	calculate_dps_stats(fight_json, fight, players_running_healing_addon, config)
 		
-	return fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats
+	return fight, players_running_healing_addon, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, stacking_uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats
 
 
 
@@ -3238,7 +3392,7 @@ def write_box_plot_charts(DPS_List, myDate, input_directory):
 #	end write bubble charts
 
 
-def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats, output_file):
+def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_total_stat_players, top_average_stat_players, top_consistent_stat_players, top_percentage_stat_players, top_late_players, top_jack_of_all_trades_players, squad_offensive, squad_Control, enemy_Control, enemy_Control_Player, downed_Healing, uptime_Table, stacking_uptime_Table, auras_TableIn, auras_TableOut, Death_OnTag, DPS_List, DPSStats, output_file):
 	json_dict = {}
 	json_dict["overall_raid_stats"] = {key: value for key, value in overall_raid_stats.items()}
 	json_dict["overall_squad_stats"] = {key: value for key, value in overall_squad_stats.items()}
@@ -3255,6 +3409,7 @@ def write_to_json(overall_raid_stats, overall_squad_stats, fights, players, top_
 	json_dict["enemy_Control"] =  {key: value for key, value in enemy_Control.items()}
 	json_dict["enemy_Control_Player"] =  {key: value for key, value in enemy_Control_Player.items()}
 	json_dict["uptime_Table"] =  {key: value for key, value in uptime_Table.items()}
+	json_dict["stacking_uptime_Table"] =  {key: value for key, value in stacking_uptime_Table.items()}
 	json_dict["auras_TableIn"] =  {key: value for key, value in auras_TableIn.items()}
 	json_dict["auras_TableOut"] =  {key: value for key, value in auras_TableOut.items()}
 	json_dict["Death_OnTag"] =  {key: value for key, value in Death_OnTag.items()}
