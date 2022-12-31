@@ -2114,6 +2114,8 @@ def calculate_dps_stats(fight_json, fight, players_running_healing_addon, config
 			DPSStats[DPSStats_prof_name]["Squad_Damage_Total"] = 0
 			DPSStats[DPSStats_prof_name]["Burst_Damage"] = [0] * 21
 			DPSStats[DPSStats_prof_name]["Ch5Ca_Burst_Damage"] = [0] * 21
+			DPSStats[DPSStats_prof_name]["Burst_Healing"] = [0] * 31
+			DPSStats[DPSStats_prof_name]["Burst_Group_Healing"] = [0] * 31
 			DPSStats[DPSStats_prof_name]["Downs"] = 0
 			DPSStats[DPSStats_prof_name]["Kills"] = 0
 			
@@ -2316,6 +2318,55 @@ def calculate_dps_stats(fight_json, fight, players_running_healing_addon, config
 
 				stacking_uptime_Table[DPSStats_prof_name]["duration_"+buff_name] += total_time
 	
+	# Burst Healing: max healing done in n seconds
+	healingPS = {}
+	healingGroupPS = {}
+	for player in fight_json['players']:
+		if "extHealingStats" not in player:
+			continue
+
+		player_prof_name  = "{{"+player['profession']+"}} "+player['name']
+		if player_prof_name not in healingPS:
+			healingPS[player_prof_name] = [0] * fight_ticks
+			healingGroupPS[player_prof_name] = [0] * fight_ticks
+
+		allied_healing = player['extHealingStats']['alliedHealingPowerHealing1S']
+		for index in range(len(allied_healing)):
+			is_same_group = player['group'] == fight_json['players'][index]['group']
+			for i in range(fight_ticks):
+				healingPS[player_prof_name][i] += allied_healing[index][0][i]
+				if is_same_group:
+					healingGroupPS[player_prof_name][i] += allied_healing[index][0][i]
+
+	#Instant Revive tracking of downed healing
+	instant_Revive = {14419: 'Battle Standard', 9163: 'Signet of Mercy', 5763: 'Renewal of Water', 5762: 'Renewal of Fire', 5760: 'Renewal of Air', 5761: 'Renewal of Earth', 5564: 'Mistform'}
+	for player in fight_json['players']:
+		player_prof_name = "{{"+player['profession']+"}} "+player['name']
+		if skip_fight[player_prof_name] or player_prof_name not in healingPS:
+			continue
+
+		used_instant_revive = False
+		for target in player['extHealingStats']['totalHealingDist'][0]:
+			if 'totalDownedHealing' in target and int(target['totalDownedHealing']) > 0:
+				if target['id'] in instant_Revive:
+					used_instant_revive = True
+					break
+
+		if used_instant_revive:
+			continue
+
+		player_role = player_roles[player_prof_name]
+		DPSStats_prof_name = player_prof_name + " " + player_role
+		player_healing = healingPS[player_prof_name]
+		player_group_healing = healingGroupPS[player_prof_name]
+		for i in range(1, 31):
+			for fight_tick in range(i, fight_ticks):
+				healing = player_healing[fight_tick] - player_healing[fight_tick - i]
+				DPSStats[DPSStats_prof_name]["Burst_Healing"][i] = max(healing, DPSStats[DPSStats_prof_name]["Burst_Healing"][i])
+				
+				group_healing = player_group_healing[fight_tick] - player_group_healing[fight_tick - i]
+				DPSStats[DPSStats_prof_name]["Burst_Group_Healing"][i] = max(group_healing, DPSStats[DPSStats_prof_name]["Burst_Group_Healing"][i])
+
 	return DPSStats
 
 # get stats for this fight from fight_json

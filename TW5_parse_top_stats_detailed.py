@@ -89,6 +89,8 @@ if __name__ == '__main__':
 	myprint(output, 'curStackingBuffs: might')
 	myprint(output, 'curBurstTableDamage: Ch5Ca')
 	myprint(output, 'curBurstTableType: Cumulative')
+	myprint(output, 'curBurstHealTableDamage: All')
+	myprint(output, 'curBurstHealTableType: Cumulative')
 	myprint(output, 'curChart: Kills/Downs/DPS')
 	myprint(output, 'tags: Logs [['+myDate.strftime("%Y")+'-'+myDate.strftime("%m")+' Log Reviews]]')
 	myprint(output, 'title: '+myDate.strftime("%Y%m%d")+'-WvW-Log-Review\n')
@@ -151,6 +153,7 @@ if __name__ == '__main__':
 					'<$button set="!!curTab" setTo="Offensive Stats" selectedClass="" class="btn btn-sm btn-dark" style=""> Offensive Stats </$button>',
 					'<$button set="!!curTab" setTo="DPSStats" selectedClass="" class="btn btn-sm btn-dark" style=""> DPS Stats </$button>',
 					'<$button set="!!curTab" setTo="Burst Damage" selectedClass="" class="btn btn-sm btn-dark" style=""> Burst Damage </$button>',
+					'<$button set="!!curTab" setTo="Burst Healing" selectedClass="" class="btn btn-sm btn-dark" style=""> Burst Healing </$button>',
 					'<$button set="!!curTab" setTo="Dashboard" selectedClass="" class="btn btn-sm btn-dark" style=""> Dashboard </$button>'
 	)
 	for item in Nav_Bar_Items:
@@ -1075,7 +1078,7 @@ if __name__ == '__main__':
 	
 	output_string = '|!Name | !Class |'
 
-	for i in range(1, 21):
+	for i in list(range(1, 6)) + list(range(10, 21, 5)):
 		output_string += " !"+str(i)+"s |"
 		
 	output_string += "h"
@@ -1090,7 +1093,7 @@ if __name__ == '__main__':
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '
-		for i in range(1, 21):
+		for i in list(range(1, 6)) + list(range(10, 21, 5)):
 			output_string += ' '+my_value(round(DPSStats[DPSStats_prof_name]['Burst_Damage'][i] / i))+'|'
 				
 		myprint(output, output_string)
@@ -1106,7 +1109,7 @@ if __name__ == '__main__':
 	
 	output_string = '|!Name | !Class |'
 
-	for i in range(1, 21):
+	for i in list(range(1, 6)) + list(range(10, 21, 5)):
 		output_string += " !"+str(i)+"s |"
 		
 	output_string += "h"
@@ -1121,7 +1124,7 @@ if __name__ == '__main__':
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '
-		for i in range(1, 21):
+		for i in list(range(1, 6)) + list(range(10, 21, 5)):
 			output_string += ' '+my_value(DPSStats[DPSStats_prof_name]['Burst_Damage'][i])+'|'
 				
 		myprint(output, output_string)
@@ -1140,7 +1143,7 @@ if __name__ == '__main__':
 	
 	output_string = '|!Name | !Class |'
 
-	for i in range(1, 21):
+	for i in list(range(1, 6)) + list(range(10, 21, 5)):
 		output_string += " !"+str(i)+"s |"
 		
 	output_string += "h"
@@ -1155,7 +1158,7 @@ if __name__ == '__main__':
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '
-		for i in range(1, 21):
+		for i in list(range(1, 6)) + list(range(10, 21, 5)):
 			output_string += ' '+my_value(round(DPSStats[DPSStats_prof_name]['Ch5Ca_Burst_Damage'][i] / i))+'|'
 				
 		myprint(output, output_string)
@@ -1171,7 +1174,7 @@ if __name__ == '__main__':
 	
 	output_string = '|!Name | !Class |'
 
-	for i in range(1, 21):
+	for i in list(range(1, 6)) + list(range(10, 21, 5)):
 		output_string += " !"+str(i)+"s |"
 		
 	output_string += "h"
@@ -1186,7 +1189,7 @@ if __name__ == '__main__':
 			continue
 
 		output_string = '|'+name+' |'+' {{'+prof+'}} | '
-		for i in range(1, 21):
+		for i in list(range(1, 6)) + list(range(10, 21, 5)):
 			output_string += ' '+my_value(DPSStats[DPSStats_prof_name]['Ch5Ca_Burst_Damage'][i])+'|'
 				
 		myprint(output, output_string)
@@ -1196,6 +1199,153 @@ if __name__ == '__main__':
 
 	myprint(output, "\n</$reveal>\n")     
 	# end Ch5Ca Burst Damage
+
+	# Burst Healing
+	myprint(output, '<$reveal type="match" state="!!curTab" text="Burst Healing">\n')    
+	myprint(output, '\n<<alert-leftbar light "🤖 Experimental Healing stats 🤖" width:60%, class:"font-weight-bold">>\n\n')
+	
+	myprint(output, '\n---\n')
+	myprint(output, '!!! `Burst Healing(t)` [`BurHeal(t)`] \n')
+	myprint(output, '!!! Maximum healing done over any `t` second interval \n')
+	myprint(output, '\n---\n')
+
+	burst_menu_string = '| '
+	burst_menu_string += '<$radio field="curBurstHealTableDamage" value="All">&nbsp;All</$radio>&nbsp; &nbsp;<$radio field="curBurstHealTableDamage" value="Group">&nbsp;Group</$radio>'
+	burst_menu_string += '&nbsp;&nbsp;/&nbsp;&nbsp;'
+	burst_menu_string += '<$radio field="curBurstHealTableType" value="Cumulative">&nbsp;Cumulative</$radio>&nbsp; &nbsp;<$radio field="curBurstHealTableType" value="PS">&nbsp;PS</$radio>'
+	burst_menu_string += ' |c'
+
+	# First the per second version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstHealTableDamage" text="All">\n')
+	myprint(output, '<$reveal type="match" state="!!curBurstHealTableType" text="PS">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, burst_menu_string)
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Class |'
+
+	for i in list(range(1, 11)) + list(range(15, 31, 5)):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Burst_Healing'][11] < 20000 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '
+		for i in list(range(1, 11)) + list(range(15, 31, 5)):
+			output_string += ' '+my_value(round(DPSStats[DPSStats_prof_name]['Burst_Healing'][i] / i))+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+
+	# Next the cumulative version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstHealTableType" text="Cumulative">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, burst_menu_string)
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Class |'
+
+	for i in list(range(1, 11)) + list(range(15, 31, 5)):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Burst_Healing'][11] < 20000 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '
+		for i in list(range(1, 11)) + list(range(15, 31, 5)):
+			output_string += ' '+my_value(DPSStats[DPSStats_prof_name]['Burst_Healing'][i])+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+	myprint(output, "\n</$reveal>\n")
+
+	# Ch5Ca Burst Damage
+	# First the per second version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstHealTableDamage" text="Group">\n')
+	myprint(output, '<$reveal type="match" state="!!curBurstHealTableType" text="PS">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, burst_menu_string)
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Class |'
+
+	for i in list(range(1, 11)) + list(range(15, 31, 5)):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Burst_Healing'][11] < 20000 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '
+		for i in list(range(1, 11)) + list(range(15, 31, 5)):
+			output_string += ' '+my_value(round(DPSStats[DPSStats_prof_name]['Burst_Group_Healing'][i] / i))+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+
+	# Next the cumulative version of the table
+	myprint(output, '<$reveal type="match" state="!!curBurstHealTableType" text="Cumulative">\n')
+
+	myprint(output, '|table-caption-top|k')
+	myprint(output, burst_menu_string)
+	myprint(output, '|thead-dark table-hover sortable|k')
+	
+	output_string = '|!Name | !Class |'
+
+	for i in list(range(1, 11)) + list(range(15, 31, 5)):
+		output_string += " !"+str(i)+"s |"
+		
+	output_string += "h"
+	myprint(output, output_string)
+
+	for DPSStats_prof_name in DPSStats:
+		name = DPSStats[DPSStats_prof_name]['name']
+		prof = DPSStats[DPSStats_prof_name]['profession']
+		fightTime = DPSStats[DPSStats_prof_name]['duration']
+
+		if DPSStats[DPSStats_prof_name]['Burst_Healing'][11] < 20000 or fightTime * 10 < max_fightTime:
+			continue
+
+		output_string = '|'+name+' |'+' {{'+prof+'}} | '
+		for i in list(range(1, 11)) + list(range(15, 31, 5)):
+			output_string += ' '+my_value(DPSStats[DPSStats_prof_name]['Burst_Group_Healing'][i])+'|'
+				
+		myprint(output, output_string)
+
+	myprint(output, "\n</$reveal>\n")
+	myprint(output, "\n</$reveal>\n")
+
+	myprint(output, "\n</$reveal>\n")     
+	# end Burst Healing
 
 	for stat in config.stats_to_compute:
 		if stat == 'dist':
