@@ -361,6 +361,78 @@ def fill_config(config_input):
 			
 	return config
 	
+
+def reset_globals():
+	#Control Effects Tracking
+	global squad_offensive, squad_Control, enemy_Control, enemy_Control_Player
+	squad_offensive = {}
+	squad_Control = {} 
+	enemy_Control = {} 
+	enemy_Control_Player = {} 
+
+	#Downed Healing from Instant Revive skills
+	global downed_Healing
+	downed_Healing = {}
+
+	#Aura Tracking 
+	global auras_TableIn, auras_TableOut
+	auras_TableIn = {}
+	auras_TableOut = {}
+
+	#Uptime Tracking
+	global uptime_Table
+	uptime_Table = {}
+
+	#Stacking Buffs Tracking
+	global stacking_uptime_Table
+	stacking_uptime_Table = {}
+
+	#Calculate On Tag Death Variables
+	global Death_OnTag
+	Death_OnTag = {}
+
+	#Collect DPS Box Plot Data
+	global DPS_List
+	DPS_List = {}
+	DPS_List['acct'] = {}
+	DPS_List['name'] = {}
+	DPS_List['prof_name'] = {}
+	DPS_List['prof'] = {}
+
+	#Collect CPS Box Plot Data
+	global CPS_List
+	CPS_List = {}
+	CPS_List['acct'] = {}
+	CPS_List['name'] = {}
+	CPS_List['prof_name'] = {}
+	CPS_List['prof'] = {}
+
+	#Collect CPS Box Plot Data
+	global SPS_List
+	SPS_List = {}
+	SPS_List['acct'] = {}
+	SPS_List['name'] = {}
+	SPS_List['prof_name'] = {}
+	SPS_List['prof'] = {}
+
+	#Collect CPS Box Plot Data
+	global HPS_List
+	HPS_List = {}
+	HPS_List['acct'] = {}
+	HPS_List['name'] = {}
+	HPS_List['prof_name'] = {}
+	HPS_List['prof'] = {}
+
+	#Calculate DPSStats Variables
+	global DPSStats
+	DPSStats = {}
+
+	#Collect MOA Info
+	global MOA_Targets, MOA_Casters
+	MOA_Targets = {}
+	MOA_Casters = {}
+
+
 		
 # For all players considered to be top in stat in this fight, increase
 # the number of fights they reached top by 1 (i.e. increase
