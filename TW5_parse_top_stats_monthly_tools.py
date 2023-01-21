@@ -621,7 +621,7 @@ def get_and_write_sorted_average(players, config, num_used_fights, stat, output_
 # Output:
 # list of player indices that got a top consistency award
 def write_sorted_top_consistent_or_avg(players, top_consistent_players, config, num_used_fights, stat, consistent_or_avg, output_file):
-	max_name_length = max([len(players[i].name) for i in top_consistent_players])
+	# max_name_length = max([len(players[i].name) for i in top_consistent_players])
 	profession_strings, profession_length = get_professions_and_length(players, top_consistent_players, config)
 
 	if consistent_or_avg == StatType.CONSISTENT:
